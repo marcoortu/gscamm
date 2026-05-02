@@ -2,64 +2,75 @@
 ## GSCA step: update path coefficients B and component scores Gamma.
 ##
 ## Reference: Ortu and Frigau (2026), Section 2.3, equations (8)-(9), and
-## Remark 1 (geometric ridge schedule). For each component k, B_k is the
-## ridge-penalized least-squares fit of the responsibilities r_k on the
-## standardized covariates X_std:
+## Remark 1 (geometric ridge schedule).
 ##
-##     hat b_k = (X' X + lambda_B I)^(-1) X' r_k.
-##
-## Gamma is then the row-binding of X_std and the component scores
-## X_std %*% B.
+## Identifiability convention (paper Section 2.2): the path coefficient
+## matrix is parametrized as B = [B_{-K}, 0], i.e. the reference component
+## carries a structural zero column. Only the non-reference block
+## B_{-K} \in R^{P x (K-1)} is estimated; the GSCA step never updates the
+## reference column. This is enforced by both the simplex- and ALR-space
+## update routines below.
 ## ---------------------------------------------------------------------------
 
-#' Ridge update for the path coefficient matrix B
+#' Ridge update for the simplex-space path coefficients
 #'
-#' @param X_std standardized covariate matrix \eqn{N \times P}.
-#' @param R responsibilities matrix \eqn{N \times K}.
-#' @param lambda_B current ridge parameter (>= 0).
-#' @param XtX precomputed \eqn{X^\top X} (optional cache); recomputed if
-#'   \code{NULL}.
-#'
-#' @return numeric matrix \eqn{P \times K} of path coefficients.
-#' @keywords internal
-.gsca_update_B <- function(X_std, R, lambda_B, XtX = NULL) {
-  P <- ncol(X_std)
-  if (is.null(XtX)) XtX <- crossprod(X_std)
-  A <- XtX + lambda_B * diag(P)
-  ## solve once for the right-hand side X' R (P x K)
-  rhs <- crossprod(X_std, R)
-  solve(A, rhs)
-}
-
-#' Ridge update for the path coefficient matrix B in ALR space
-#'
-#' Alternative GSCA step that regresses the additive log-ratios of the
-#' responsibilities (with a reference component) on the standardized
-#' covariates. Compared with the simplex-space update of equation (8),
-#' this variant aligns the linear regression with the natural geometry of
-#' compositional data and removes the structural bias induced by
-#' regressing simplex-valued responsibilities on covariates.
-#'
-#' Returns a \eqn{P \times K} matrix obtained by re-injecting a column of
-#' zeros for the reference component, so that downstream code sees the
-#' same shape as in the simplex-space variant.
+#' Regresses the non-reference responsibilities r_{ik} on the standardized
+#' covariates with a ridge penalty. The reference column is structurally
+#' zero (identifiability constraint, paper Section 2.2).
 #'
 #' @param X_std standardized covariate matrix \eqn{N \times P}.
 #' @param R responsibilities matrix \eqn{N \times K}.
 #' @param lambda_B current ridge parameter (>= 0).
 #' @param ref reference component (default last).
+#' @param XtX precomputed \eqn{X^\top X} (optional cache).
+#'
+#' @return numeric matrix \eqn{P \times K} with a zero column at
+#'   position \code{ref}.
+#' @keywords internal
+.gsca_update_B <- function(X_std, R, lambda_B, ref = ncol(R), XtX = NULL) {
+  P <- ncol(X_std); K <- ncol(R)
+  if (is.null(XtX)) XtX <- crossprod(X_std)
+  A <- XtX + lambda_B * diag(P)
+  rhs <- crossprod(X_std, R[, -ref, drop = FALSE])     ## P x (K-1)
+  B_minus <- solve(A, rhs)
+  B <- matrix(0, P, K)
+  B[, -ref] <- B_minus
+  B
+}
+
+#' Ridge update for the path coefficients in ALR space
+#'
+#' GSCA step formulated as a penalized log-ratio projection of the
+#' posterior responsibilities onto the covariate space (paper Section 2.3,
+#' Remark on the ALR-coordinate update). Each non-reference responsibility
+#' is regularized by a small constant \eqn{\delta} before the additive
+#' log-ratio transform:
+#' \deqn{\tilde r_{ik} = (r_{ik} + \delta) / \sum_\ell (r_{i\ell} + \delta).}
+#' The non-reference block of \eqn{B} is then the ridge multivariate
+#' regression of the ALR responses on the standardized covariates.
+#'
+#' Returns a \eqn{P \times K} matrix with a zero column at the reference
+#' position (identifiability constraint).
+#'
+#' @param X_std standardized covariate matrix \eqn{N \times P}.
+#' @param R responsibilities matrix \eqn{N \times K}.
+#' @param lambda_B current ridge parameter (>= 0).
+#' @param ref reference component (default last).
+#' @param delta non-negative ALR regularization constant; must be positive
+#'   when responsibilities can take exact zeros (default \code{1e-2}).
 #' @param XtX precomputed \eqn{X^\top X} (optional).
 #' @keywords internal
 .gsca_update_B_alr <- function(X_std, R, lambda_B, ref = ncol(R),
-                               XtX = NULL) {
+                               delta = 1e-2, XtX = NULL) {
   P <- ncol(X_std); K <- ncol(R)
   if (is.null(XtX)) XtX <- crossprod(X_std)
-  Rs <- pmax(R, .Machine$double.eps)
-  ## ALR-transform with ref as denominator
+  ## delta-regularize the responsibilities, then ALR-transform with ref
+  ## as denominator (paper roadmap point 3)
+  Rs <- R + delta
+  Rs <- Rs / rowSums(Rs)
   ALR <- log(Rs[, -ref, drop = FALSE] / Rs[, ref])
   A <- XtX + lambda_B * diag(P)
   B_alr <- solve(A, crossprod(X_std, ALR))             ## P x (K-1)
-  ## inject zeros for the reference column to preserve shape P x K
   B <- matrix(0, P, K)
   B[, -ref] <- B_alr
   B

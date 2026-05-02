@@ -1,7 +1,19 @@
 ## ---------------------------------------------------------------------------
-## Main fit function for the GSCA-MM framework. Implements Algorithm 1 of
-## Ortu and Frigau (2026), generalized from topic models to arbitrary
-## mixture-of-multinomials models with unit-level covariates.
+## Main fit function for the GSCA-MM framework (Ortu and Frigau, 2026).
+##
+## Model statement (paper Section 2.2, deterministic formulation):
+##   eta_{ik} = x_i' beta_k          for k = 1, ..., K-1
+##   eta_{iK} = 0                    (structural identifiability constraint)
+##   theta_i  = inverse-ALR(eta_i)   (logistic-normal / softmax with ref)
+##   y_i | theta_i, Phi  ~  Mult(L_i, theta_i' Phi)
+##
+## Estimation (Algorithm 1) maximizes the composite penalized criterion
+##   J(Phi, B) = log L(Phi, B; Y) - lambda_B || B_{-K} ||_F^2
+## by alternating an E-step (posterior responsibilities R), an M-step on
+## Phi (Dirichlet-smoothed multinomial sufficient statistics), and a
+## GSCA step that updates B_{-K} as a ridge-penalized log-ratio
+## projection of R onto the standardized covariate space, with the
+## reference column structurally fixed at zero.
 ## ---------------------------------------------------------------------------
 
 #' Control parameters for the EM-GSCA algorithm
@@ -18,6 +30,11 @@
 #' @param rho ridge decay rate \eqn{\rho \in (0, 1)} (default 0.9).
 #' @param eps sparsity threshold used by the zero-inflated link
 #'   (default \code{1e-3}).
+#' @param delta non-negative regularization constant added to the
+#'   responsibilities before the additive log-ratio transform in the
+#'   ALR-space GSCA update (default \code{1e-2}). Required to handle
+#'   rows of \eqn{R} that are sparse or have exact zeros (e.g. under the
+#'   zero-inflated link). Ignored when \code{gsca_space = "simplex"}.
 #' @param init_Phi optional list with \code{Phi} (\eqn{K \times V}) for
 #'   warm-starting; default initializes from a Dirichlet on the simplex.
 #' @param init_B optional warm-start \eqn{P \times K} matrix; default zero.
@@ -37,6 +54,7 @@ gscamm_control <- function(max_iter = 100,
                            lambda0 = 1,
                            rho = 0.9,
                            eps = 1e-3,
+                           delta = 1e-2,
                            init_Phi = NULL,
                            init_B = NULL,
                            min_iter = 5,
@@ -44,9 +62,11 @@ gscamm_control <- function(max_iter = 100,
                            trace_every = 1) {
   stopifnot(max_iter >= 1, tol >= 0, alpha >= 0,
             lambda0 >= 0, rho > 0, rho < 1, eps > 0,
+            delta >= 0,
             min_iter >= 1, trace_every >= 1)
   structure(list(max_iter = max_iter, tol = tol, alpha = alpha,
                  lambda0 = lambda0, rho = rho, eps = eps,
+                 delta = delta,
                  init_Phi = init_Phi, init_B = init_B,
                  min_iter = min_iter,
                  trace_perplexity = trace_perplexity,
@@ -76,15 +96,15 @@ gscamm_control <- function(max_iter = 100,
 #'   proportions; one of \code{"logistic_normal"} (default),
 #'   \code{"dirichlet"}, \code{"zero_inflated"}.
 #' @param gsca_space geometry in which the GSCA step regresses the
-#'   responsibilities on the covariates. \code{"simplex"} (default,
-#'   matches Equation (8) of the paper) regresses raw responsibilities
-#'   linearly on \code{X}; \code{"alr"} regresses
-#'   \eqn{\log(r_{ik} / r_{i\,\mathrm{ref}})} on \code{X} with a
-#'   user-chosen reference component \code{gsca_ref} (default \code{K}).
-#'   The ALR variant aligns the linear regression with the natural
-#'   geometry of compositional data and substantially reduces the
-#'   structural bias of the path-coefficient estimator, at the cost of
-#'   departing slightly from the original GSCA-MM specification.
+#'   posterior responsibilities on the covariates. \code{"alr"} (default)
+#'   regresses \eqn{\log(\tilde r_{ik} / \tilde r_{i\,\mathrm{ref}})} on
+#'   \code{X} after a small \eqn{\delta}-regularization of the
+#'   responsibilities; this is the geometrically-coherent update derived
+#'   in Section 2.3 of the paper and is recommended in production.
+#'   \code{"simplex"} regresses the non-reference responsibilities
+#'   directly on \code{X} (the legacy formulation, kept for comparison).
+#'   In both cases the reference column of \eqn{B} is structurally zero
+#'   to enforce identifiability (paper Section 2.2).
 #' @param gsca_ref integer reference component used when
 #'   \code{gsca_space = "alr"} (default \code{K}).
 #' @param control list of control parameters; see \code{\link{gscamm_control}}.
@@ -118,7 +138,7 @@ gscamm_control <- function(max_iter = 100,
 fit_gscamm <- function(W, X, K,
                        link = c("logistic_normal", "dirichlet",
                                 "zero_inflated"),
-                       gsca_space = c("simplex", "alr"),
+                       gsca_space = c("alr", "simplex"),
                        gsca_ref = K,
                        control = gscamm_control(),
                        verbose = FALSE,
@@ -164,7 +184,7 @@ fit_gscamm <- function(W, X, K,
   } else {
     B <- matrix(0, P, K)
   }
-  ## small random topic scores to break symmetry
+  ## small random component scores to break symmetry
   scores0 <- X_std %*% B + matrix(stats::rnorm(N * K, sd = 0.1), N, K)
   Theta <- .apply_link(scores0, link, eps = control$eps)
   Gamma <- cbind(X_std, scores0)
@@ -185,13 +205,15 @@ fit_gscamm <- function(W, X, K,
     ## M-step (Phi)
     Phi_new <- .m_step_phi(W, R, alpha = control$alpha)
 
-    ## GSCA step (B): simplex- or ALR-space ridge
+    ## GSCA step (B): ALR- or simplex-space ridge update
     lambda_t <- .lambda_schedule(t - 1L, control$lambda0, control$rho)
-    B_new <- if (gsca_space == "simplex")
-      .gsca_update_B(X_std, R, lambda_B = lambda_t, XtX = XtX)
-    else
+    B_new <- if (gsca_space == "alr")
       .gsca_update_B_alr(X_std, R, lambda_B = lambda_t,
-                         ref = gsca_ref, XtX = XtX)
+                         ref = gsca_ref,
+                         delta = control$delta, XtX = XtX)
+    else
+      .gsca_update_B(X_std, R, lambda_B = lambda_t,
+                     ref = gsca_ref, XtX = XtX)
 
     ## update Gamma and Theta from new scores
     scores_new <- X_std %*% B_new
@@ -235,8 +257,17 @@ fit_gscamm <- function(W, X, K,
   ## for the second-stage ALR-WLS regression (see covariate_effects()).
   R_final <- .e_step(W, Theta, Phi)
 
+  ## non-reference block of B (canonical estimand under the
+  ## identifiability constraint B = [B_{-K}, 0], paper Section 2.2)
+  B_minus <- B[, -gsca_ref, drop = FALSE]
+  rn_X <- colnames(X_std)
+  if (is.null(rn_X)) rn_X <- paste0("X", seq_len(P))
+  cn_nr <- paste0("comp", setdiff(seq_len(K), gsca_ref))
+  dimnames(B_minus) <- list(rn_X, cn_nr)
+
   fit <- list(
-    Phi = Phi, Theta = Theta, R = R_final, B = B, Gamma = Gamma,
+    Phi = Phi, Theta = Theta, R = R_final,
+    B = B, B_minus = B_minus, Gamma = Gamma,
     X_std = X_std, X = X, W = W,
     link = link, gsca_space = gsca_space, gsca_ref = gsca_ref,
     K = K, P = P, V = V, N = N,

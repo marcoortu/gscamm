@@ -56,8 +56,9 @@ draw_box("rmse_B",     expression(RMSE[B]),
 draw_box("coverage_B", expression("Coverage of 95% CI for "*B),
          "empirical coverage", ref_line = 0.95)
 draw_box("perplexity", "Held-in perplexity", "perplexity", log_y = TRUE)
+draw_box("time",       "Per-replicate runtime", "seconds (log)", log_y = TRUE)
 
 cat("Figures saved to:\n")
 for (f in c("rmse_theta.png", "rmse_B.png",
-            "coverage_B.png", "perplexity.png"))
+            "coverage_B.png", "perplexity.png", "time.png"))
   cat("  ", file.path(FIGURE_DIR, f), "\n")

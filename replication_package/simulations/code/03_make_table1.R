@@ -30,10 +30,10 @@ agg_mean <- function(x) mean(x, na.rm = TRUE)
 agg_sd   <- function(x) sd(x,   na.rm = TRUE)
 
 means <- aggregate(
-  cbind(rmse_theta, rmse_phi, rmse_B, coverage_B, perplexity)
+  cbind(rmse_theta, rmse_phi, rmse_B, coverage_B, perplexity, time)
     ~ scenario + method, data = R, FUN = agg_mean)
 sds <- aggregate(
-  cbind(rmse_theta, rmse_phi, rmse_B, coverage_B, perplexity)
+  cbind(rmse_theta, rmse_phi, rmse_B, coverage_B, perplexity, time)
     ~ scenario + method, data = R, FUN = agg_sd)
 
 tab <- data.frame(
@@ -46,6 +46,8 @@ tab <- data.frame(
   RMSE_B_sd       = round(sds$rmse_B,       3),
   coverage_B_mean = round(means$coverage_B, 3),
   perplexity_mean = round(means$perplexity, 3),
+  time_sec_mean   = round(means$time,       2),
+  time_sec_sd     = round(sds$time,         2),
   stringsAsFactors = FALSE
 )
 
@@ -56,22 +58,27 @@ print(tab, row.names = FALSE)
 write.csv(tab, file.path(RESULT_DIR, "table1.csv"), row.names = FALSE)
 
 ## minimal LaTeX export
-fmt <- function(x) sprintf("%.3f", x)
+fmt  <- function(x) sprintf("%.3f", x)
+fmt2 <- function(x) sprintf("%.2f", x)
 lines <- c(
-  "\\begin{tabular}{llrrrrrrr}",
+  "\\begin{tabular}{llrrrrrrrr}",
   "\\hline",
-  "condition & method & RMSE\\_theta\\_mean & RMSE\\_theta\\_sd & RMSE\\_phi\\_mean & RMSE\\_B\\_mean & RMSE\\_B\\_sd & coverage\\_B\\_mean & perplexity\\_mean \\\\",
+  paste0("condition & method & RMSE\\_theta\\_mean & RMSE\\_theta\\_sd",
+         " & RMSE\\_phi\\_mean & RMSE\\_B\\_mean & RMSE\\_B\\_sd",
+         " & coverage\\_B\\_mean & perplexity\\_mean",
+         " & time\\_sec\\_mean \\\\"),
   "\\hline"
 )
 for (i in seq_len(nrow(tab))) {
   lines <- c(lines, sprintf(
-    "%s & %s & %s & %s & %s & %s & %s & %s & %s \\\\",
+    "%s & %s & %s & %s & %s & %s & %s & %s & %s & %s \\\\",
     tab$condition[i], tab$method[i],
     fmt(tab$RMSE_theta_mean[i]), fmt(tab$RMSE_theta_sd[i]),
     fmt(tab$RMSE_phi_mean[i]),
     fmt(tab$RMSE_B_mean[i]), fmt(tab$RMSE_B_sd[i]),
     fmt(tab$coverage_B_mean[i]),
-    fmt(tab$perplexity_mean[i])
+    fmt(tab$perplexity_mean[i]),
+    fmt2(tab$time_sec_mean[i])
   ))
 }
 lines <- c(lines, "\\hline", "\\end{tabular}")

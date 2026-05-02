@@ -2,15 +2,15 @@
 ## EM updates for the mixture-of-multinomials part of GSCA-MM.
 ##
 ## Reference: Ortu and Frigau (2026), Section 2.3 "Penalized Likelihood
-## Estimation". The E-step computes document-level posterior responsibilities
+## Estimation". The E-step computes unit-level posterior responsibilities
 ## (Equation 6, aggregated form). The M-step updates the component-category
 ## distributions Phi with Dirichlet smoothing alpha (Equation 7).
 ##
 ## All operations are done in log-space to avoid underflow when V is large
-## or document lengths are heterogeneous.
+## or observation lengths are heterogeneous.
 ## ---------------------------------------------------------------------------
 
-#' E-step: aggregated document-level responsibilities
+#' E-step: aggregated unit-level responsibilities
 #'
 #' Computes \eqn{r_{ik} \propto \theta_{ik} \prod_v \phi_{kv}^{n_{iv}}},
 #' normalized rowwise to sum to one. Uses the log-sum-exp trick.

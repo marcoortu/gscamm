@@ -98,5 +98,15 @@ align_components <- function(Phi_hat, Phi_ref) {
   P <- ncol(fit$X_std)
   K <- length(perm)
   fit$Gamma[, (P + 1):(P + K)] <- fit$Gamma[, P + perm, drop = FALSE]
+  ## refresh the canonical non-reference path-coefficient block. This is
+  ## valid only when perm does not move the reference component, which is
+  ## the contract of the alignment routine used by the bootstrap.
+  ref <- fit$gsca_ref %||% K
+  fit$B_minus <- fit$B[, -ref, drop = FALSE]
+  rn <- rownames(fit$B_minus)
+  if (is.null(rn) && !is.null(colnames(fit$X_std))) rn <- colnames(fit$X_std)
+  if (is.null(rn)) rn <- paste0("X", seq_len(nrow(fit$B_minus)))
+  dimnames(fit$B_minus) <- list(rn,
+                                paste0("comp", setdiff(seq_len(K), ref)))
   fit
 }

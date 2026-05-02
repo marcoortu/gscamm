@@ -4,7 +4,7 @@
 ## Reference: Ortu and Frigau (2026), Remark 2 and the (commented) bootstrap
 ## proposal in Section 4.2. The plug-in sandwich variance treats the
 ## first-stage estimate of Theta as if it were the truth, and therefore
-## undercovers when N is small relative to K or document lengths are short.
+## undercovers when N is small relative to K or observation lengths are short.
 ##
 ## The row bootstrap resamples N observations with replacement, refits the
 ## entire EM-GSCA algorithm on each bootstrap sample, re-aligns the
@@ -153,7 +153,7 @@ bootstrap_covariate_effects <- function(fit,
     Xb <- X[idx, , drop = FALSE]
     fitb <- tryCatch(
       fit_gscamm(Wb, Xb, K = K, link = link,
-                 gsca_space = fit$gsca_space %||% "simplex",
+                 gsca_space = fit$gsca_space %||% "alr",
                  gsca_ref = fit$gsca_ref %||% K,
                  control = control,
                  verbose = FALSE, seed = NULL),

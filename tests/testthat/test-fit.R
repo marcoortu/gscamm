@@ -46,3 +46,32 @@ test_that("link choices all run end-to-end", {
     expect_equal(rowSums(fit$Theta), rep(1, 40))
   }
 })
+
+test_that("identifiability constraint: B[, ref] is structurally zero", {
+  sim <- simulate_gscamm(N = 60, V = 25, K = 4, P = 3, seed = 13,
+                         doc_length_mean = 200)
+  for (sp in c("alr", "simplex")) {
+    fit <- fit_gscamm(sim$W, sim$X, K = 4, gsca_space = sp,
+                      control = gscamm_control(max_iter = 15), seed = 13)
+    expect_equal(max(abs(fit$B[, fit$gsca_ref])), 0,
+                 info = paste("ref column not zero for gsca_space=", sp))
+    expect_equal(dim(fit$B_minus), c(3L, 3L))
+  }
+})
+
+test_that("coef.gscamm returns the canonical block by default", {
+  sim <- simulate_gscamm(N = 50, V = 20, K = 4, P = 3, seed = 21,
+                         doc_length_mean = 200)
+  fit <- fit_gscamm(sim$W, sim$X, K = 4,
+                    control = gscamm_control(max_iter = 12), seed = 21)
+  expect_equal(dim(coef(fit)),                c(3L, 3L))
+  expect_equal(dim(coef(fit, augmented = TRUE)), c(3L, 4L))
+})
+
+test_that("default gsca_space is alr", {
+  sim <- simulate_gscamm(N = 30, V = 15, K = 3, P = 2, seed = 99,
+                         doc_length_mean = 100)
+  fit <- fit_gscamm(sim$W, sim$X, K = 3,
+                    control = gscamm_control(max_iter = 5), seed = 1)
+  expect_identical(fit$gsca_space, "alr")
+})
