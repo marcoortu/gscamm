@@ -1,0 +1,48 @@
+test_that("fit_gscamm returns a well-formed gscamm object", {
+  sim <- simulate_gscamm(N = 60, V = 30, K = 3, P = 3, seed = 42,
+                         doc_length_mean = 200)
+  fit <- fit_gscamm(sim$W, sim$X, K = 3,
+                    control = gscamm_control(max_iter = 20, tol = 1e-3),
+                    seed = 1)
+  expect_s3_class(fit, "gscamm")
+  expect_equal(dim(fit$Phi), c(3, 30))
+  expect_equal(dim(fit$Theta), c(60, 3))
+  expect_equal(dim(fit$B), c(3, 3))
+  ## simplex constraints
+  expect_equal(rowSums(fit$Theta), rep(1, 60))
+  expect_equal(rowSums(fit$Phi),   rep(1, 3))
+  ## perplexity is finite
+  expect_true(is.finite(tail(fit$convergence$perplexity, 1)))
+})
+
+test_that("perplexity does not increase on average across iterations", {
+  sim <- simulate_gscamm(N = 80, V = 50, K = 4, P = 3, seed = 7,
+                         doc_length_mean = 150)
+  fit <- fit_gscamm(sim$W, sim$X, K = 4,
+                    control = gscamm_control(max_iter = 30, tol = 1e-5,
+                                             trace_perplexity = TRUE),
+                    seed = 7)
+  perp <- fit$convergence$perplexity
+  expect_true(perp[length(perp)] <= perp[1] + 1e-6)
+})
+
+test_that("predict returns valid simplex matrices", {
+  sim <- simulate_gscamm(N = 50, V = 25, K = 3, P = 2, seed = 11,
+                         doc_length_mean = 200)
+  fit <- fit_gscamm(sim$W, sim$X, K = 3,
+                    control = gscamm_control(max_iter = 15), seed = 11)
+  Th <- predict(fit, sim$X[1:5, , drop = FALSE])
+  expect_equal(dim(Th), c(5, 3))
+  expect_equal(rowSums(Th), rep(1, 5))
+})
+
+test_that("link choices all run end-to-end", {
+  sim <- simulate_gscamm(N = 40, V = 20, K = 3, P = 2, seed = 99,
+                         doc_length_mean = 100)
+  for (lk in c("logistic_normal", "dirichlet", "zero_inflated")) {
+    fit <- fit_gscamm(sim$W, sim$X, K = 3, link = lk,
+                      control = gscamm_control(max_iter = 10), seed = 1)
+    expect_s3_class(fit, "gscamm")
+    expect_equal(rowSums(fit$Theta), rep(1, 40))
+  }
+})

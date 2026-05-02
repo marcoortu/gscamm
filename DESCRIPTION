@@ -1,0 +1,40 @@
+Package: gscamm
+Type: Package
+Title: Generalized Structured Component Analysis for Mixture-of-Multinomials Models
+Version: 0.1.0
+Authors@R: c(
+    person("Marco", "Ortu", email = "marco.ortu@unica.it",
+           role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-4191-5058")),
+    person("Luca", "Frigau", role = "aut",
+           comment = c(ORCID = "0000-0002-6316-4040")))
+Description: Implementation of the GSCA-MM framework, a structured component
+    regression model for mixture-of-multinomials data with unit-level
+    covariates. The package generalizes the GSCA-TM topic model of Ortu and
+    Frigau (2026) to arbitrary mixture-of-multinomials applications such as
+    microbiome composition analysis, market basket studies, and topic
+    modeling. Covariate effects on mixture weights are represented through
+    a path coefficient matrix within a generalized structured component
+    analysis formulation. Estimation alternates EM updates for the component
+    distributions with a ridge-penalized regression step for the path
+    coefficients, decoupling latent structure recovery from structural
+    parameter estimation. Post-estimation inference on covariate effects is
+    available via additive log-ratio weighted least squares.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 4.0)
+Imports:
+    Matrix,
+    stats,
+    utils,
+    clue
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown
+RoxygenNote: 7.3.3
+Config/testthat/edition: 3
+URL: https://github.com/marcoortu/gscamm
+BugReports: https://github.com/marcoortu/gscamm/issues

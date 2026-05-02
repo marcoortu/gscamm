@@ -1,0 +1,40 @@
+# Generated NAMESPACE for gscamm
+
+# Main fitting functions
+export(fit_gscamm)
+export(gscamm_control)
+
+# Post-estimation inference
+export(covariate_effects)
+export(bootstrap_covariate_effects)
+
+# Simulation
+export(simulate_gscamm)
+
+# Utilities
+export(align_components)
+export(perplexity)
+export(search_optimal_components)
+
+# Link functions (exported for advanced users)
+export(link_logistic_normal)
+export(link_dirichlet)
+export(link_zero_inflated)
+
+# S3 methods
+S3method(print, gscamm)
+S3method(summary, gscamm)
+S3method(print, summary.gscamm)
+S3method(coef, gscamm)
+S3method(predict, gscamm)
+S3method(plot, gscamm)
+S3method(print, gscamm_effects)
+S3method(plot, gscamm_effects)
+
+# Imports
+importFrom(stats, lm, lm.wfit, qnorm, pnorm, p.adjust, rnorm, rmultinom,
+           rpois, runif, sd, var, coef, residuals, fitted, predict, model.matrix,
+           setNames)
+importFrom(utils, head)
+importFrom(clue, solve_LSAP)
+importFrom(graphics, par, axis, abline, segments)
