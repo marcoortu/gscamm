@@ -179,7 +179,7 @@ fit_stm <- function(W, X, K, ref = K, max_iter = 75, ...) {
 fit_gscamm_pi <- function(W, X, K, ref = K,
                           fit_max_iter = 80, fit_tol = 1e-5,
                           link = "logistic_normal",
-                          gsca_space = "simplex", ...) {
+                          gsca_space = "alr", ...) {
   t0 <- Sys.time()
   ctl <- gscamm_control(max_iter = fit_max_iter, tol = fit_tol)
   fit <- fit_gscamm(W, X, K = K, link = link,
@@ -207,7 +207,7 @@ fit_gscamm_boot <- function(W, X, K, ref = K,
                             noise_augment = TRUE, noise_scale = 2.0,
                             bias_correct = TRUE,
                             link = "logistic_normal",
-                            gsca_space = "simplex",
+                            gsca_space = "alr",
                             reuse_fit = NULL, ...) {
   t0 <- Sys.time()
   if (is.null(reuse_fit)) {
