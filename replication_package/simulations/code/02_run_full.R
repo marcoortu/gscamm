@@ -1,10 +1,15 @@
 ## ---------------------------------------------------------------------------
-## 02_run_full.R -- full Monte Carlo, paper setup
+## 02_run_full.R -- full Monte Carlo, paper setup (parallelised)
 ##   N = 1000, V = 500, K = 10, P = 8, R = 100 per scenario
 ##
+## Parallelises replicates within each scenario via parallel::mclapply.
+## Uses all available physical cores minus 1.
+## Progress is logged to stdout and results/sim_full.log.
+##
 ## Outputs:
-##   results/full_metrics.rds  (long data frame)
+##   results/full_metrics.rds
 ##   results/full_metrics.csv
+##   results/sim_full.log
 ## ---------------------------------------------------------------------------
 
 .find_setup <- function() {
@@ -17,19 +22,41 @@
 }
 source(.find_setup())
 
-## allow override via environment variable for ad-hoc smaller runs
-R_arg <- Sys.getenv("GSCAMM_SIM_R", unset = "100")
+## ---------------------------------------------------------------------------
+## Logging: writes timestamped lines to stdout and to sim_full.log
+## ---------------------------------------------------------------------------
+LOG_FILE <- file.path(RESULT_DIR, "sim_full.log")
+.log_con <- file(LOG_FILE, open = "wt")
+
+.log <- function(...) {
+  msg <- paste0("[", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "] ",
+                paste0(...), "\n")
+  cat(msg)
+  cat(msg, file = .log_con)
+  flush(.log_con)
+}
+
+## ---------------------------------------------------------------------------
+## Parallel setup
+## ---------------------------------------------------------------------------
+n_phys  <- max(1L, parallel::detectCores(logical = FALSE))
+n_cores <- max(1L, n_phys - 1L)
+.log(sprintf("Cores: %d physical detected, using %d", n_phys, n_cores))
+
+## ---------------------------------------------------------------------------
+## Simulation design
+## ---------------------------------------------------------------------------
+R_arg <- Sys.getenv("GSCAMM_SIM_R",  unset = "100")
 B_arg <- Sys.getenv("GSCAMM_BOOT_B", unset = "200")
 
 DESIGN <- modifyList(DEFAULT_DESIGN, list(
   N = 1000, V = 500, K = 10, P = 8,
-  R = as.integer(R_arg),
+  R      = as.integer(R_arg),
   boot_B = as.integer(B_arg)
 ))
-cat("=== Full simulation design ===\n")
-str(DESIGN)
+.log("=== Full simulation design ===")
+for (ln in capture.output(str(DESIGN))) .log(ln)
 
-## per-scenario doc-length, matching the paper
 doc_lengths <- list(baseline       = 1000,
                     high_covariate = 1000,
                     high_sparsity  = 20)
@@ -37,39 +64,88 @@ doc_lengths <- list(baseline       = 1000,
 set.seed(2026)
 master_seeds <- sample.int(.Machine$integer.max, DESIGN$R)
 
-all_rows <- list()
-t_global <- Sys.time()
-
-for (sc in DESIGN$scenarios) {
-  cat("\n=========== scenario:", sc, "===========\n")
-  for (r in seq_len(DESIGN$R)) {
-    t0 <- Sys.time()
-    sim <- simulate_gscamm(N = DESIGN$N, V = DESIGN$V, K = DESIGN$K, P = DESIGN$P,
-                           scenario = sc, seed = master_seeds[r],
-                           doc_length_mean = doc_lengths[[sc]])
-    rows <- tryCatch(run_one_replicate(sim, sc, design = DESIGN),
-                     error = function(e) {
-                       message(sprintf("[%s rep %d] FAILED: %s",
-                                       sc, r, conditionMessage(e)))
-                       NULL
-                     })
-    if (!is.null(rows)) {
-      rows$replicate <- r
-      rows$seed <- master_seeds[r]
-      all_rows[[length(all_rows) + 1L]] <- rows
+## ---------------------------------------------------------------------------
+## Worker: runs one replicate and returns rows + timing
+## (mclapply forks the process so all globals are available)
+## ---------------------------------------------------------------------------
+.run_worker <- function(r, sc, design, doc_lengths, master_seeds) {
+  t0  <- Sys.time()
+  sim <- simulate_gscamm(N = design$N, V = design$V,
+                         K = design$K, P = design$P,
+                         scenario = sc, seed = master_seeds[r],
+                         doc_length_mean = doc_lengths[[sc]])
+  rows <- tryCatch(
+    run_one_replicate(sim, sc, design = design),
+    error = function(e) {
+      message(sprintf("[%s rep %d] FAILED: %s", sc, r, conditionMessage(e)))
+      NULL
     }
-    elapsed <- as.numeric(Sys.time() - t0, units = "secs")
-    total_elapsed <- as.numeric(Sys.time() - t_global, units = "mins")
-    cat(sprintf("  %s rep %3d/%d done in %5.1fs   total: %5.1f min\n",
-                sc, r, DESIGN$R, elapsed, total_elapsed))
-    ## checkpoint every 10 replicates per scenario
-    if (r %% 10L == 0L) {
-      results <- do.call(rbind, all_rows)
-      saveRDS(results, file.path(RESULT_DIR, "full_metrics_partial.rds"))
-    }
+  )
+  if (!is.null(rows)) {
+    rows$replicate <- r
+    rows$seed      <- master_seeds[r]
   }
+  list(rows = rows, r = r,
+       elapsed = as.numeric(Sys.time() - t0, units = "secs"))
 }
 
+## ---------------------------------------------------------------------------
+## Main loop: scenarios sequential, replicates parallelised in chunks.
+## Chunk size = n_cores so we log progress after every wave of workers.
+## ---------------------------------------------------------------------------
+all_rows   <- list()
+t_global   <- Sys.time()
+total_done <- 0L
+total_reps <- length(DESIGN$scenarios) * DESIGN$R
+
+chunk_ids <- function(R, size)
+  split(seq_len(R), ceiling(seq_len(R) / size))
+
+for (sc in DESIGN$scenarios) {
+  t_sc <- Sys.time()
+  .log(sprintf("========== scenario: %s  [R=%d, %d cores, chunk=%d] ==========",
+               sc, DESIGN$R, n_cores, n_cores))
+
+  sc_rows <- list()
+
+  for (chunk in chunk_ids(DESIGN$R, n_cores)) {
+    res_chunk <- parallel::mclapply(
+      chunk,
+      .run_worker,
+      sc           = sc,
+      design       = DESIGN,
+      doc_lengths  = doc_lengths,
+      master_seeds = master_seeds,
+      mc.cores        = n_cores,
+      mc.preschedule  = FALSE
+    )
+
+    for (res in res_chunk) {
+      total_done <- total_done + 1L
+      pct        <- 100 * total_done / total_reps
+      elapsed_g  <- as.numeric(Sys.time() - t_global, units = "mins")
+      .log(sprintf("  %s rep %3d/%d  %5.1fs  |  total: %5.1f min  [%5.1f%%]",
+                   sc, res$r, DESIGN$R, res$elapsed, elapsed_g, pct))
+      if (!is.null(res$rows))
+        sc_rows[[length(sc_rows) + 1L]] <- res$rows
+    }
+
+    ## checkpoint after every chunk
+    all_rows_now <- c(all_rows, sc_rows)
+    if (length(all_rows_now)) {
+      saveRDS(do.call(rbind, all_rows_now),
+              file.path(RESULT_DIR, "full_metrics_partial.rds"))
+    }
+  }
+
+  all_rows <- c(all_rows, sc_rows)
+  .log(sprintf("  --> scenario %s complete in %.1f min",
+               sc, as.numeric(Sys.time() - t_sc, units = "mins")))
+}
+
+## ---------------------------------------------------------------------------
+## Save final results
+## ---------------------------------------------------------------------------
 results <- do.call(rbind, all_rows)
 results$method <- factor(results$method,
                          levels = c("gscamm", "gscamm_boot", "lda", "stm"))
@@ -78,6 +154,8 @@ saveRDS(results, file.path(RESULT_DIR, "full_metrics.rds"))
 write.csv(results, file.path(RESULT_DIR, "full_metrics.csv"), row.names = FALSE)
 unlink(file.path(RESULT_DIR, "full_metrics_partial.rds"))
 
-cat(sprintf("\n=== Full run complete in %.1f min ===\n",
-            as.numeric(Sys.time() - t_global, units = "mins")))
-cat("Results saved to:\n  ", file.path(RESULT_DIR, "full_metrics.rds"), "\n")
+total_mins <- as.numeric(Sys.time() - t_global, units = "mins")
+.log(sprintf("=== Full run complete in %.1f min ===", total_mins))
+.log(paste("Results:", file.path(RESULT_DIR, "full_metrics.rds")))
+.log(paste("Log:    ", LOG_FILE))
+close(.log_con)
