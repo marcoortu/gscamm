@@ -31,7 +31,13 @@
   P <- ncol(X_std); K <- ncol(R)
   if (is.null(XtX)) XtX <- crossprod(X_std)
   A <- XtX + lambda_B * diag(P)
-  rhs <- crossprod(X_std, R[, -ref, drop = FALSE])     ## P x (K-1)
+  ## Regress (R[, k] - R[, ref]) on X for k != ref. This matches the
+  ## post-softmax behaviour of the original GSCA-TM simplex update
+  ## (paper Equation 8) under the identifiability constraint
+  ## B_{ref} = 0; regressing R[, k] alone would change the effective
+  ## scale of the recovered structural coefficients.
+  R_diff <- R[, -ref, drop = FALSE] - R[, ref]
+  rhs <- crossprod(X_std, R_diff)                      ## P x (K-1)
   B_minus <- solve(A, rhs)
   B <- matrix(0, P, K)
   B[, -ref] <- B_minus
