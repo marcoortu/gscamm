@@ -147,15 +147,19 @@ covariate_effects <- function(object,
       meat <- crossprod(D, (w^2 * e^2) * D)
       Vmat <- XtWX_inv %*% meat %*% XtWX_inv
     } else {
-      ## hybrid estimator: point estimate from Theta-based WLS, residual
-      ## variance from responsibility-based residuals (paper Remark on
-      ## first-stage uncertainty). Captures the variability that the
-      ## deterministic link otherwise discards.
+      ## hybrid estimator: point estimate from Theta-based WLS (paper
+      ## Section 2.4 accuracy), residual variance from an unweighted
+      ## OLS-on-R-ALR fit so that the first-stage noise is not
+      ## extinguished by the deterministic-link weights. Mirrors the
+      ## noise_sigma calculation used by the bootstrap routine.
       y_R <- log(R_base[, k] / R_base[, ref])
-      e_R <- as.numeric(y_R - D %*% bhat)
+      fit_R_ols <- stats::lm.fit(D, y_R)
+      e_R <- as.numeric(fit_R_ols$residuals)
       df_k <- max(length(e_R) - ncol(D), 1L)
-      sigma2_k <- sum(w * e_R^2) / df_k
-      Vmat <- sigma2_k * XtWX_inv
+      sigma2_k <- sum(e_R^2) / df_k
+      DtD_inv <- tryCatch(solve(crossprod(D)),
+                          error = function(...) MASS_ginv(crossprod(D)))
+      Vmat <- sigma2_k * DtD_inv
     }
     dimnames(Vmat) <- list(cov_names, cov_names)
     vcov_list[[j]] <- Vmat
