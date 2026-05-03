@@ -1,0 +1,13 @@
+"condition","method","RMSE_theta_mean","RMSE_theta_sd","RMSE_phi_mean","RMSE_B_mean","RMSE_B_sd","coverage_B_mean","perplexity_mean"
+"baseline","gscamm",0.187,0.011,0.004,0.946,0.092,0.618,297.559
+"baseline","gscamm_boot",0.187,0.011,0.004,0.98,0.098,0.993,297.559
+"baseline","lda",0.103,0.032,0.004,1.03,0.28,0.108,164.186
+"baseline","stm",0.036,0.038,0.002,0.458,0.47,0.339,162.944
+"high_covariate","gscamm",0.19,0.01,0.004,0.948,0.093,0.624,297.195
+"high_covariate","gscamm_boot",0.19,0.01,0.004,0.986,0.096,0.997,297.195
+"high_covariate","lda",0.104,0.033,0.004,0.951,0.229,0.144,160.585
+"high_covariate","stm",0.035,0.035,0.002,0.453,0.366,0.474,159.03
+"high_sparsity","gscamm",0.198,0.01,0.005,0.951,0.093,0.601,288.895
+"high_sparsity","gscamm_boot",0.198,0.01,0.005,0.987,0.096,1,288.895
+"high_sparsity","lda",0.156,0.023,0.004,0.905,0.18,0.299,134.451
+"high_sparsity","stm",0.084,0.031,0.004,0.913,0.333,0.144,139.305
