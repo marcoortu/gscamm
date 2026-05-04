@@ -13,6 +13,9 @@ suppressPackageStartupMessages({
   library(slam)          ## simple_triplet_matrix used by topicmodels
 })
 
+## null-coalescing helper (gscamm's `%||%` is not exported)
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
 ## resolve paths relative to this file's location
 .this_file <- function() {
   args <- commandArgs(trailingOnly = FALSE)
@@ -193,9 +196,15 @@ fit_gscamm_pi <- function(W, X, K, ref = K,
   hi <- matrix(eff$coefficients$conf.high, P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
   se <- matrix(eff$coefficients$std.error, P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
 
-  list(Theta = fit$Theta, Phi = fit$Phi,
+  ## R is the data-informed posterior (analog of LDA's gamma and STM's
+  ## theta); the deterministic fit$Theta is the covariate-only prior.
+  ## We expose R so align_and_metrics can compare it to sim$Theta on the
+  ## same footing as the LDA/STM comparators, and compute perplexity from
+  ## R for consistency with how those packages report it.
+  R_post <- fit$R %||% fit$Theta
+  list(Theta = fit$Theta, R = R_post, Phi = fit$Phi,
        B_alr = B, se_B = se, ci_lo = lo, ci_hi = hi,
-       perplexity = gscamm::perplexity(W, fit$Theta, fit$Phi),
+       perplexity = gscamm::perplexity(W, R_post, fit$Phi),
        time = as.numeric(Sys.time() - t0, units = "secs"),
        fit = fit)                                   ## kept for reuse by boot
 }
@@ -229,9 +238,10 @@ fit_gscamm_boot <- function(W, X, K, ref = K,
   lo <- matrix(eff$coefficients$conf.low,  P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
   hi <- matrix(eff$coefficients$conf.high, P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
   se <- matrix(eff$coefficients$std.error, P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
-  list(Theta = fit$Theta, Phi = fit$Phi,
+  R_post <- fit$R %||% fit$Theta
+  list(Theta = fit$Theta, R = R_post, Phi = fit$Phi,
        B_alr = B, se_B = se, ci_lo = lo, ci_hi = hi,
-       perplexity = gscamm::perplexity(W, fit$Theta, fit$Phi),
+       perplexity = gscamm::perplexity(W, R_post, fit$Phi),
        time = as.numeric(Sys.time() - t0, units = "secs"))
 }
 
@@ -250,6 +260,10 @@ align_and_metrics <- function(fit_out, sim, ref = ncol(sim$Phi),
   perm <- gscamm::align_components(fit_out$Phi, sim$Phi)
   Phi_a   <- fit_out$Phi[perm, , drop = FALSE]
   Theta_a <- fit_out$Theta[, perm, drop = FALSE]
+  ## data-informed posterior (R = posterior responsibilities for gscamm,
+  ## fit_out$Theta itself for LDA/STM where Theta is already data-informed).
+  R_a <- if (!is.null(fit_out$R))
+    fit_out$R[, perm, drop = FALSE] else Theta_a
 
   ## permute B_alr columns: B_alr columns correspond to non-reference
   ## components in the FIT's order (1..K-1). The fit's reference is comp
@@ -292,6 +306,8 @@ align_and_metrics <- function(fit_out, sim, ref = ncol(sim$Phi),
     perm2 <- perm[swap]
     Phi_a   <- fit_out$Phi[perm2, , drop = FALSE]
     Theta_a <- fit_out$Theta[, perm2, drop = FALSE]
+    R_a <- if (!is.null(fit_out$R))
+      fit_out$R[, perm2, drop = FALSE] else Theta_a
   }
   ## At this point comp K of (Theta_a, Phi_a) is aligned with the true ref.
 
@@ -321,16 +337,25 @@ align_and_metrics <- function(fit_out, sim, ref = ncol(sim$Phi),
     B_a <- res$B; lo_a <- res$ci_lo; hi_a <- res$ci_hi; se_a <- res$se
   }
 
-  ## metrics
-  rmse_theta <- sqrt(mean((Theta_a - sim$Theta)^2))
-  rmse_phi   <- sqrt(mean((Phi_a   - sim$Phi)^2))
-  rmse_B     <- sqrt(mean((B_a - sim$beta)^2))
+  ## metrics: rmse_theta uses the structural estimator Theta_a (= deterministic
+  ## inverse-ALR(X*B_hat) for gscamm; data-informed gamma/theta for LDA/STM).
+  ## Under GSCA-MM's deterministic specification, Theta IS the Bayesian
+  ## estimator of theta. The responsibilities R are the posterior over
+  ## token-level assignments, NOT the posterior of theta, so they over-peak
+  ## with informative data and underestimate the continuous fractional
+  ## weights of the truth. We additionally report rmse_theta_R as a
+  ## diagnostic for the data-informed responsibility-based estimator.
+  rmse_theta   <- sqrt(mean((Theta_a - sim$Theta)^2))
+  rmse_theta_R <- sqrt(mean((R_a     - sim$Theta)^2))
+  rmse_phi     <- sqrt(mean((Phi_a   - sim$Phi)^2))
+  rmse_B       <- sqrt(mean((B_a - sim$beta)^2))
   cov_B <- if (!is.null(lo_a))
     mean(sim$beta >= lo_a & sim$beta <= hi_a) else NA_real_
   width_B <- if (!is.null(lo_a)) mean(hi_a - lo_a) else NA_real_
 
   list(method = method_tag,
-       rmse_theta = rmse_theta, rmse_phi = rmse_phi,
+       rmse_theta = rmse_theta, rmse_theta_R = rmse_theta_R,
+       rmse_phi = rmse_phi,
        rmse_B = rmse_B, coverage_B = cov_B, width_B = width_B,
        perplexity = fit_out$perplexity, time = fit_out$time)
 }

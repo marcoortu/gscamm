@@ -11,6 +11,7 @@ gscamm_control(
   lambda0 = 1,
   rho = 0.9,
   eps = 0.001,
+  delta = 0.01,
   init_Phi = NULL,
   init_B = NULL,
   min_iter = 5,
@@ -36,6 +37,12 @@ schedule \eqn{\lambda_B^{(t)} = \lambda_0 \rho^t} (default 1).}
 
 \item{eps}{sparsity threshold used by the zero-inflated link
 (default \code{1e-3}).}
+
+\item{delta}{non-negative regularization constant added to the
+responsibilities before the additive log-ratio transform in the
+ALR-space GSCA update (default \code{1e-2}). Required to handle
+rows of \eqn{R} that are sparse or have exact zeros (e.g. under the
+zero-inflated link). Ignored when \code{gsca_space = "simplex"}.}
 
 \item{init_Phi}{optional list with \code{Phi} (\eqn{K \times V}) for
 warm-starting; default initializes from a Dirichlet on the simplex.}

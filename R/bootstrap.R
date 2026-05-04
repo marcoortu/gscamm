@@ -155,6 +155,7 @@ bootstrap_covariate_effects <- function(fit,
       fit_gscamm(Wb, Xb, K = K, link = link,
                  gsca_space = fit$gsca_space %||% "alr",
                  gsca_ref = fit$gsca_ref %||% K,
+                 init_phi = fit$init_phi %||% "kmeans",
                  control = control,
                  verbose = FALSE, seed = NULL),
       error = function(e) NULL

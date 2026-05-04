@@ -2,9 +2,9 @@
 % Please edit documentation in R/gsca_step.R
 \name{.gsca_update_B}
 \alias{.gsca_update_B}
-\title{Ridge update for the path coefficient matrix B}
+\title{Ridge update for the simplex-space path coefficients}
 \usage{
-.gsca_update_B(X_std, R, lambda_B, XtX = NULL)
+.gsca_update_B(X_std, R, lambda_B, ref = ncol(R), XtX = NULL)
 }
 \arguments{
 \item{X_std}{standardized covariate matrix \eqn{N \times P}.}
@@ -13,13 +13,17 @@
 
 \item{lambda_B}{current ridge parameter (>= 0).}
 
-\item{XtX}{precomputed \eqn{X^\top X} (optional cache); recomputed if
-\code{NULL}.}
+\item{ref}{reference component (default last).}
+
+\item{XtX}{precomputed \eqn{X^\top X} (optional cache).}
 }
 \value{
-numeric matrix \eqn{P \times K} of path coefficients.
+numeric matrix \eqn{P \times K} with a zero column at
+  position \code{ref}.
 }
 \description{
-Ridge update for the path coefficient matrix B
+Regresses the non-reference responsibilities r_{ik} on the standardized
+covariates with a ridge penalty. The reference column is structurally
+zero (identifiability constraint, paper Section 2.2).
 }
 \keyword{internal}

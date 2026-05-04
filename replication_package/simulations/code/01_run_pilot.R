@@ -57,7 +57,7 @@ results$method <- factor(results$method,
 
 cat("\n==== pilot summary ====\n")
 agg <- aggregate(
-  cbind(rmse_theta, rmse_phi, rmse_B, coverage_B, width_B, perplexity, time)
+  cbind(rmse_theta, rmse_theta_R, rmse_phi, rmse_B, coverage_B, width_B, perplexity, time)
     ~ scenario + method,
   data = results,
   FUN = function(x) round(mean(x, na.rm = TRUE), 3)

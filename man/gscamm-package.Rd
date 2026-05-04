@@ -7,16 +7,20 @@
 \title{gscamm: Generalized Structured Component Analysis for Mixture Models}
 \description{
 Implementation of the GSCA-MM framework introduced by Ortu and Frigau
-(2026), generalizing the GSCA-TM topic model to arbitrary
-mixture-of-multinomials applications such as microbiome composition
-analysis, market basket studies and topic modeling. Covariate effects
-on mixture weights are represented through a path coefficient matrix
-within a generalized structured component analysis formulation.
-Estimation alternates EM updates for the component distributions with
-a ridge-penalized regression step for the path coefficients,
-decoupling latent structure recovery from structural parameter
-estimation. Post-estimation inference on covariate effects is
-available via additive log-ratio weighted least squares.
+(2026), a deterministic structured component regression for
+covariate-driven mixture-of-multinomials models, with topic modeling
+as a special case. The mixture weights of each unit are obtained via
+an inverse additive log-ratio (ALR) link of a deterministic linear
+predictor in the covariates, with a structural zero on the reference
+component to enforce identifiability of the path coefficients. The
+estimation algorithm alternates EM updates for the component-category
+distributions with a ridge-penalized log-ratio projection of the
+posterior responsibilities onto the covariate space (the GSCA step),
+under a composite penalized criterion that decouples latent structure
+recovery from structural parameter estimation. Post-estimation
+inference on covariate effects is available via ALR weighted least
+squares (plug-in) or non-parametric row bootstrap with optional
+noise augmentation.
 }
 \section{Main entry points}{
 

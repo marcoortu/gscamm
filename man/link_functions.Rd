@@ -41,7 +41,7 @@ given by \eqn{\exp(\gamma_{ik})}. Equation (4). The deterministic
 point estimate used in the algorithm is the normalized mean of the
 Dirichlet, i.e. \code{exp(scores)} normalized rowwise; this matches
 the GSCA-MM estimation routine, which works with the conditional mean
-of the topic scores given the covariates.
+of the component scores given the covariates.
 
 \item \code{link_zero_inflated()}: Zero-inflated link. Sets \eqn{\theta_{ik}=0}
 when \eqn{\exp(\gamma_{ik}) < \epsilon} and renormalizes the

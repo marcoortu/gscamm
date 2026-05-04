@@ -2,9 +2,9 @@
 % Please edit documentation in R/gsca_step.R
 \name{.gsca_update_B_alr}
 \alias{.gsca_update_B_alr}
-\title{Ridge update for the path coefficient matrix B in ALR space}
+\title{Ridge update for the path coefficients in ALR space}
 \usage{
-.gsca_update_B_alr(X_std, R, lambda_B, ref = ncol(R), XtX = NULL)
+.gsca_update_B_alr(X_std, R, lambda_B, ref = ncol(R), delta = 0.01, XtX = NULL)
 }
 \arguments{
 \item{X_std}{standardized covariate matrix \eqn{N \times P}.}
@@ -15,19 +15,23 @@
 
 \item{ref}{reference component (default last).}
 
+\item{delta}{non-negative ALR regularization constant; must be positive
+when responsibilities can take exact zeros (default \code{1e-2}).}
+
 \item{XtX}{precomputed \eqn{X^\top X} (optional).}
 }
 \description{
-Alternative GSCA step that regresses the additive log-ratios of the
-responsibilities (with a reference component) on the standardized
-covariates. Compared with the simplex-space update of equation (8),
-this variant aligns the linear regression with the natural geometry of
-compositional data and removes the structural bias induced by
-regressing simplex-valued responsibilities on covariates.
+GSCA step formulated as a penalized log-ratio projection of the
+posterior responsibilities onto the covariate space (paper Section 2.3,
+Remark on the ALR-coordinate update). Each non-reference responsibility
+is regularized by a small constant \eqn{\delta} before the additive
+log-ratio transform:
+\deqn{\tilde r_{ik} = (r_{ik} + \delta) / \sum_\ell (r_{i\ell} + \delta).}
+The non-reference block of \eqn{B} is then the ridge multivariate
+regression of the ALR responses on the standardized covariates.
 }
 \details{
-Returns a \eqn{P \times K} matrix obtained by re-injecting a column of
-zeros for the reference component, so that downstream code sees the
-same shape as in the simplex-space variant.
+Returns a \eqn{P \times K} matrix with a zero column at the reference
+position (identifiability constraint).
 }
 \keyword{internal}

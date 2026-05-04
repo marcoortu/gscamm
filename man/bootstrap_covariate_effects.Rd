@@ -19,7 +19,8 @@ bootstrap_covariate_effects(
   type = c("percentile", "basic", "bca"),
   bias_correct = FALSE,
   use = c("theta", "responsibilities"),
-  noise_augment = FALSE
+  noise_augment = FALSE,
+  noise_scale = 1
 )
 }
 \arguments{

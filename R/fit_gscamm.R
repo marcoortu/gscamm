@@ -107,6 +107,15 @@ gscamm_control <- function(max_iter = 100,
 #'   to enforce identifiability (paper Section 2.2).
 #' @param gsca_ref integer reference component used when
 #'   \code{gsca_space = "alr"} (default \code{K}).
+#' @param init_phi initialization strategy for the component-category
+#'   matrix \eqn{\boldsymbol{\Phi}}. \code{"kmeans"} (default) seeds
+#'   \eqn{\boldsymbol{\Phi}} via k-means++ on the row-normalized count
+#'   matrix followed by a few Lloyd iterations on a subsample, which
+#'   reduces local-optima frequency and gives a better recovery of
+#'   \eqn{\mathbf{B}} relative to a Dirichlet random start. \code{"random"}
+#'   restores the legacy Dirichlet random initialization used in earlier
+#'   versions. Explicit \code{control$init_Phi} matrices override this
+#'   argument.
 #' @param control list of control parameters; see \code{\link{gscamm_control}}.
 #' @param verbose logical, print per-iteration progress.
 #' @param seed optional integer for reproducible initialization.
@@ -140,11 +149,13 @@ fit_gscamm <- function(W, X, K,
                                 "zero_inflated"),
                        gsca_space = c("alr", "simplex"),
                        gsca_ref = K,
+                       init_phi = c("kmeans", "random"),
                        control = gscamm_control(),
                        verbose = FALSE,
                        seed = NULL) {
   link <- match.arg(link)
   gsca_space <- match.arg(gsca_space)
+  init_phi <- match.arg(init_phi)
   if (gsca_ref < 1 || gsca_ref > K) stop("gsca_ref out of range.")
   if (!inherits(control, "gscamm_control"))
     control <- do.call(gscamm_control, as.list(control))
@@ -170,6 +181,8 @@ fit_gscamm <- function(W, X, K,
     Phi <- as.matrix(control$init_Phi)
     if (!identical(dim(Phi), c(K, V)))
       stop("init_Phi must have dimension K x V.")
+  } else if (init_phi == "kmeans") {
+    Phi <- .init_phi_kmeans(W, K)
   } else {
     ## random Dirichlet(0.1) rows
     Phi <- matrix(stats::rgamma(K * V, 0.1, 1), K, V)
@@ -270,6 +283,7 @@ fit_gscamm <- function(W, X, K,
     B = B, B_minus = B_minus, Gamma = Gamma,
     X_std = X_std, X = X, W = W,
     link = link, gsca_space = gsca_space, gsca_ref = gsca_ref,
+    init_phi = init_phi,
     K = K, P = P, V = V, N = N,
     convergence = list(
       iterations = iter_done,
