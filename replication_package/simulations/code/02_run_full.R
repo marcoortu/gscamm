@@ -41,7 +41,10 @@ LOG_FILE <- file.path(RESULT_DIR, "sim_full.log")
 ## ---------------------------------------------------------------------------
 n_phys  <- max(1L, parallel::detectCores(logical = FALSE))
 n_cores <- max(1L, n_phys - 1L)
-.log(sprintf("Cores: %d physical detected, using %d", n_phys, n_cores))
+## mclapply uses fork(), unsupported on Windows -- fall back to serial.
+if (.Platform$OS.type == "windows") n_cores <- 1L
+.log(sprintf("Cores: %d physical detected, using %d (OS: %s)",
+             n_phys, n_cores, .Platform$OS.type))
 
 ## ---------------------------------------------------------------------------
 ## Simulation design
@@ -56,6 +59,16 @@ DESIGN <- modifyList(DEFAULT_DESIGN, list(
 ))
 .log("=== Full simulation design ===")
 for (ln in capture.output(str(DESIGN))) .log(ln)
+
+## Surface the env-var toggles in the log so each ablation run is
+## auto-documented (R/B/C/D/F see README incremental-runs section).
+.log(sprintf("=== Toggles ==="))
+.log(sprintf("  fit_max_iter   = %d", DESIGN$fit_max_iter))
+.log(sprintf("  boot_max_iter  = %d", DESIGN$boot_max_iter))
+.log(sprintf("  noise_scale    = %.3f", DESIGN$noise_scale))
+.log(sprintf("  use_polish     = %s", DESIGN$use_polish))
+.log(sprintf("  sigma2_polish  = %.3f", DESIGN$sigma2_polish))
+.log(sprintf("  use_stm_random = %s", DESIGN$use_stm_random))
 
 doc_lengths <- list(baseline       = 1000,
                     high_covariate = 1000,

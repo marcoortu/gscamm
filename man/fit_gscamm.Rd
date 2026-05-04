@@ -12,6 +12,9 @@ fit_gscamm(
   gsca_space = c("alr", "simplex"),
   gsca_ref = K,
   init_phi = c("kmeans", "random"),
+  polish = c("map", "none"),
+  sigma2_polish = 0.25,
+  sigma2_max = 1,
   control = gscamm_control(),
   verbose = FALSE,
   seed = NULL
@@ -53,6 +56,38 @@ reduces local-optima frequency and gives a better recovery of
 restores the legacy Dirichlet random initialization used in earlier
 versions. Explicit \code{control$init_Phi} matrices override this
 argument.}
+
+\item{polish}{post-EM estimator for the unit-level mixture proportions.
+\code{"map"} (default) runs a per-row Newton MAP polish that combines
+the covariate-driven structural mean
+\eqn{\boldsymbol{\mu}_i = X_i^\top \widehat{B}_{-K}} with the
+mixture-of-multinomials likelihood under \eqn{\widehat{\Phi}}, using
+a Gaussian ALR prior with diagonal variance \code{sigma2_polish}.
+The resulting \code{Theta_map} is the apples-to-apples counterpart
+of LDA's \eqn{\gamma} and STM's posterior \eqn{\theta}: it combines
+the covariate-aware prior with the data-informed likelihood, in
+contrast to the structural \code{Theta} (X-only) and the
+token-level posterior \code{R} (data-only, over-peaked).
+\code{"none"} skips the polish; \code{Theta_map} is then \code{NULL}.
+The polish does not affect \eqn{\widehat{B}} or its sandwich variance,
+so coverage of the covariate-effect intervals is preserved.}
+
+\item{sigma2_polish}{prior variance for the MAP polish, in ALR space.
+Either a positive scalar (applied to all non-reference components),
+a length-\eqn{K-1} positive numeric vector (per-component), or the
+string \code{"auto"} to use the data-driven estimate
+\code{fit$sigma2_k} (estimated from ALR residuals of \eqn{R} against
+the structural mean) capped at \code{sigma2_max}. The default
+\code{0.25} is a robust regularization choice across the simulation
+regimes of Section 4 (long, dense and short, sparse documents).
+\code{sigma2_polish} acts as a hyperparameter controlling how much
+the data is allowed to update the structural prior:
+small values pull \eqn{\widehat\eta_i} toward \eqn{X_i^\top \widehat{B}},
+large values toward the multinomial MLE.}
+
+\item{sigma2_max}{upper bound applied when \code{sigma2_polish = "auto"}
+to guard against the high-bias residuals of \eqn{R} in regimes with
+small \eqn{N} or large \eqn{V}; default \code{1.0}. Ignored otherwise.}
 
 \item{control}{list of control parameters; see \code{\link{gscamm_control}}.}
 

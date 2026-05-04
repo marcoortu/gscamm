@@ -16,7 +16,9 @@ gscamm_control(
   init_B = NULL,
   min_iter = 5,
   trace_perplexity = TRUE,
-  trace_every = 1
+  trace_every = 1,
+  polish_max_iter = 20L,
+  polish_tol = 1e-06
 )
 }
 \arguments{
@@ -58,6 +60,12 @@ iterations.}
 
 \item{trace_every}{interval at which to record perplexity when
 \code{trace_perplexity = FALSE} (default 5).}
+
+\item{polish_max_iter}{Newton iterations cap for the per-row MAP polish
+(default 20). Only used when \code{fit_gscamm(polish = "map")}.}
+
+\item{polish_tol}{max-absolute-change tolerance on \eqn{\eta} for the
+MAP polish (default \code{1e-6}).}
 }
 \value{
 a list of class \code{gscamm_control}.

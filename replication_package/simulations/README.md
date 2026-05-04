@@ -34,15 +34,103 @@ source("code/02_run_full.R")
 
 | label         | algorithm                                                              | inference                       |
 |---------------|------------------------------------------------------------------------|---------------------------------|
-| `gscamm`      | GSCA-MM, simplex-space GSCA step (paper default)                       | plug-in WLS (paper)             |
+| `gscamm`      | GSCA-MM, ALR-space GSCA step + per-row MAP polish (default)            | plug-in WLS (paper)             |
 | `gscamm_boot` | identical fit + non-parametric row bootstrap                           | basic CI + noise augmentation   |
-| `lda`         | `topicmodels::LDA` (Variational EM)                                    | plug-in ALR-WLS                 |
-| `stm`         | `stm::stm` with prevalence formula on all covariates                   | plug-in ALR-WLS                 |
+| `lda`         | `topicmodels::LDA` (Variational EM, random init, seed=1)               | plug-in ALR-WLS                 |
+| `stm`         | `stm::stm`, `init.type = "Spectral"` (anchor-words warm start)         | plug-in ALR-WLS                 |
+| `stm_random`  | `stm::stm`, `init.type = "Random"` (controlled-init counter-factual)   | plug-in ALR-WLS                 |
 
 For STM we deliberately use the **same** ALR-WLS post-hoc to keep the
 comparison apples-to-apples on the second stage; coverage from STM's
 native `estimateEffect` would be a different number reported elsewhere
-(see paper).
+(see paper). The `stm_random` row is included as a counter-factual:
+STM's native `Spectral` init is a strong data-driven warm start, so
+reporting both isolates how much of STM's apparent recovery edge comes
+from the init versus the model.
+
+### Theta estimators reported
+
+For each method the metrics file records three RMSE columns against the
+ground-truth `sim$Theta`:
+
+| column           | gscamm meaning                                        | LDA / STM meaning      |
+|------------------|-------------------------------------------------------|------------------------|
+| `rmse_theta`     | structural Theta = inverse-ALR(X B), X-only           | posterior gamma/theta  |
+| `rmse_theta_R`   | token-level posterior responsibilities (over-peaked)  | same as `rmse_theta`   |
+| `rmse_theta_map` | MAP polish: prior X B + multinomial likelihood        | same as `rmse_theta`   |
+
+`rmse_theta_map` is the **apples-to-apples** column when comparing
+gscamm to LDA/STM, since both sides combine a covariate-aware prior
+with the data likelihood. The legacy `rmse_theta` column is retained
+because it is the canonical structural estimand of the paper.
+
+## Single-script ablation driver
+
+For end-to-end ablation across all 4 incremental configs (B, C, D, F) in
+a single Rscript invocation, use `code/05_run_ablation.R`. It snapshots
+the current `results/full_metrics.{rds,csv}` as `runA` (if not already
+present), then spawns 4 child Rscript subprocesses with the appropriate
+env-var toggles, and renames the outputs of each into
+`results/full_metrics_run{B,C,D,F}.{rds,csv}` plus per-run logs.
+
+```bash
+# 1) Install the package source (the children load gscamm via library(),
+#    so any source-only change must be installed first).
+R CMD INSTALL .
+
+# 2) Drive the 4 incremental runs end-to-end (writes a per-run summary).
+Rscript replication_package/simulations/code/05_run_ablation.R
+```
+
+The driver writes `results/ablation_summary.csv` after every iteration so
+a partial trail survives a crash. On linux02-class hardware the full
+ablation takes ~3 hours at R=100, B=200; override with `GSCAMM_SIM_R` /
+`GSCAMM_BOOT_B` for a faster pilot.
+
+## Incremental ablation runs (manual sequence)
+
+The simulation script reads several environment variables so the same
+code can drive ablation runs A→F without edits. Defaults are tuned for
+the "final" run F.
+
+| variable                | default | meaning                                          |
+|-------------------------|---------|--------------------------------------------------|
+| `GSCAMM_FIT_MAX_ITER`   | `200`   | gscamm EM cap (was 80; raised after the          |
+|                         |         | high_sparsity run hit the cap in 2/5 reps)       |
+| `GSCAMM_BOOT_MAX_ITER`  | `60`    | bootstrap EM cap (was 30)                        |
+| `GSCAMM_NOISE_SCALE`    | `1.0`   | bootstrap noise multiplier (was `2.0`; lowered   |
+|                         |         | to bring boot coverage back from 1.000 → ~0.95)  |
+| `GSCAMM_USE_POLISH`     | `1`     | apply per-row MAP polish (`fit$Theta_map`)       |
+| `GSCAMM_SIGMA2_POLISH`  | `0.25`  | prior variance for the MAP polish (ALR space)    |
+| `GSCAMM_USE_STM_RANDOM` | `1`     | also fit STM with `init.type = "Random"`         |
+| `GSCAMM_SIM_R`          | `100`   | replicates per scenario                          |
+| `GSCAMM_BOOT_B`         | `200`   | bootstrap replicates per fit                     |
+
+Suggested ablation sequence (each writes to `results/full_metrics.rds`,
+**save the previous file first** so you can compare):
+
+```bash
+# Run A: current baseline (no changes — already on disk)
+
+# Run B: +iteration budget (isolate convergence asymmetry)
+GSCAMM_USE_POLISH=0 GSCAMM_USE_STM_RANDOM=0 GSCAMM_NOISE_SCALE=2.0 \
+  Rscript code/02_run_full.R
+
+# Run C: +stm_random (isolate STM Spectral-init edge)
+GSCAMM_USE_POLISH=0 GSCAMM_USE_STM_RANDOM=1 GSCAMM_NOISE_SCALE=2.0 \
+  Rscript code/02_run_full.R
+
+# Run D: +MAP polish (apples-to-apples theta estimator)
+GSCAMM_USE_POLISH=1 GSCAMM_USE_STM_RANDOM=1 GSCAMM_NOISE_SCALE=2.0 \
+  Rscript code/02_run_full.R
+
+# Run F: +noise_scale=1.0 (recalibrate bootstrap coverage)
+GSCAMM_USE_POLISH=1 GSCAMM_USE_STM_RANDOM=1 GSCAMM_NOISE_SCALE=1.0 \
+  Rscript code/02_run_full.R
+```
+
+(Run E -- tempered E-step -- was skipped: with the MAP polish in place
+the responsibilities R become a diagnostic only.)
 
 ## Expected runtime (paper scale)
 

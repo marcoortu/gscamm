@@ -21,21 +21,33 @@ if (!file.exists(infile))
   stop("Run 02_run_full.R first to produce ", infile)
 
 R <- readRDS(infile)
-R$method <- factor(R$method,
-                   levels = c("gscamm", "gscamm_boot", "lda", "stm"),
-                   labels = c("GSCA-MM\n(plug-in)",
-                              "GSCA-MM\n(boot+noise)",
-                              "LDA+ALR", "STM"))
+
+## back-compat: rmse_theta_map missing in older RDS files
+if (!"rmse_theta_map" %in% names(R)) R$rmse_theta_map <- R$rmse_theta
+
+## detect available methods (stm_random is opt-in)
+present_methods <- intersect(
+  c("gscamm", "gscamm_boot", "lda", "stm", "stm_random"),
+  unique(as.character(R$method))
+)
+method_labels <- c(gscamm       = "GSCA-MM\n(plug-in)",
+                   gscamm_boot  = "GSCA-MM\n(boot+noise)",
+                   lda          = "LDA+ALR",
+                   stm          = "STM\n(Spectral)",
+                   stm_random   = "STM\n(Random init)")
+R$method   <- factor(R$method, levels = present_methods,
+                     labels = method_labels[present_methods])
 R$scenario <- factor(R$scenario,
                      levels = c("baseline", "high_covariate", "high_sparsity"))
 
 ## High-contrast palette: the two GSCA-MM variants use distinct hues
-## (light blue / deep navy) rather than two adjacent blues, so the
-## plug-in and bootstrap boxes are visually separable when both are shown.
+## (light blue / deep navy); STM Spectral and STM Random are shaded
+## variants of red so the spectral-vs-random contrast is immediate.
 PALETTE <- c("GSCA-MM\n(plug-in)"    = "#60A5FA",
              "GSCA-MM\n(boot+noise)" = "#1E3A8A",
              "LDA+ALR"               = "#10B981",
-             "STM"                   = "#EF4444")
+             "STM\n(Spectral)"       = "#EF4444",
+             "STM\n(Random init)"    = "#FCA5A5")
 
 draw_box <- function(varname, title, ylab,
                      ref_line = NULL, file = NULL, log_y = FALSE,
@@ -76,8 +88,11 @@ draw_box <- function(varname, title, ylab,
          horiz = TRUE, bty = "n", cex = 0.85)
 }
 
-draw_box("rmse_theta", expression(RMSE[theta]),
+draw_box("rmse_theta", expression(RMSE[theta]*" (structural / posterior)"),
          expression(RMSE[theta]), drop_boot = TRUE)
+draw_box("rmse_theta_map",
+         expression(RMSE[theta]*" (MAP / posterior; apples-to-apples)"),
+         expression(RMSE[theta]^MAP), drop_boot = TRUE)
 draw_box("rmse_B",     expression(RMSE[B]),
          expression(RMSE[B]))
 draw_box("coverage_B", expression("Coverage of 95% CI for "*B),
@@ -87,6 +102,6 @@ draw_box("perplexity", "Held-in perplexity", "perplexity",
 draw_box("time",       "Per-replicate runtime", "seconds (log)", log_y = TRUE)
 
 cat("Figures saved to:\n")
-for (f in c("rmse_theta.png", "rmse_B.png",
+for (f in c("rmse_theta.png", "rmse_theta_map.png", "rmse_B.png",
             "coverage_B.png", "perplexity.png", "time.png"))
   cat("  ", file.path(FIGURE_DIR, f), "\n")
