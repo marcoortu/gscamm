@@ -34,19 +34,26 @@ source("code/02_run_full.R")
 
 | label         | algorithm                                                              | inference                       |
 |---------------|------------------------------------------------------------------------|---------------------------------|
-| `gscamm`      | GSCA-MM, ALR-space GSCA step + per-row MAP polish (default)            | plug-in WLS (paper)             |
-| `gscamm_boot` | identical fit + non-parametric row bootstrap                           | basic CI + noise augmentation   |
-| `lda`         | `topicmodels::LDA` (Variational EM, random init, seed=1)               | plug-in ALR-WLS                 |
-| `stm`         | `stm::stm`, `init.type = "Spectral"` (anchor-words warm start)         | plug-in ALR-WLS                 |
-| `stm_random`  | `stm::stm`, `init.type = "Random"` (controlled-init counter-factual)   | plug-in ALR-WLS                 |
+| `gscamm`        | GSCA-MM, ALR-space GSCA step + per-row MAP polish (default)            | plug-in WLS (paper)             |
+| `gscamm_boot`   | identical fit + non-parametric row bootstrap                           | basic CI + noise augmentation   |
+| `lda`           | `topicmodels::LDA` (Variational EM, random init, seed=1)               | plug-in ALR-WLS                 |
+| `stm`           | `stm::stm`, `init.type = "Random"` (no warm start; canonical)          | plug-in ALR-WLS                 |
+| `stm_spectral`  | `stm::stm`, `init.type = "Spectral"` (anchor-words; opt-in counterfactual) | plug-in ALR-WLS             |
 
 For STM we deliberately use the **same** ALR-WLS post-hoc to keep the
 comparison apples-to-apples on the second stage; coverage from STM's
 native `estimateEffect` would be a different number reported elsewhere
-(see paper). The `stm_random` row is included as a counter-factual:
-STM's native `Spectral` init is a strong data-driven warm start, so
-reporting both isolates how much of STM's apparent recovery edge comes
-from the init versus the model.
+(see paper).
+
+**Why STM defaults to Random init.** STM's native `Spectral` init is the
+Arora-Halpern-Mimno anchor-words algorithm: a deterministic, data-driven
+warm start with theoretical recovery guarantees. The ablation analysis
+in `full_metrics_run{C,D,F}.rds` shows it contributes **+34% to +231%**
+of STM's apparent edge on `rmse_theta` over the other models -- it is an
+*init effect*, not a *model effect*. To make the model-to-model comparison
+fair, the canonical `stm` row uses Random init. The Spectral variant is
+available as `stm_spectral` (opt-in via `GSCAMM_USE_STM_SPECTRAL=1`) for
+the explicit init-comparison appendix.
 
 ### Theta estimators reported
 
@@ -100,11 +107,11 @@ the "final" run F.
 | `GSCAMM_BOOT_MAX_ITER`  | `60`    | bootstrap EM cap (was 30)                        |
 | `GSCAMM_NOISE_SCALE`    | `1.0`   | bootstrap noise multiplier (was `2.0`; lowered   |
 |                         |         | to bring boot coverage back from 1.000 → ~0.95)  |
-| `GSCAMM_USE_POLISH`     | `1`     | apply per-row MAP polish (`fit$Theta_map`)       |
-| `GSCAMM_SIGMA2_POLISH`  | `0.25`  | prior variance for the MAP polish (ALR space)    |
-| `GSCAMM_USE_STM_RANDOM` | `1`     | also fit STM with `init.type = "Random"`         |
-| `GSCAMM_SIM_R`          | `100`   | replicates per scenario                          |
-| `GSCAMM_BOOT_B`         | `200`   | bootstrap replicates per fit                     |
+| `GSCAMM_USE_POLISH`       | `1`     | apply per-row MAP polish (`fit$Theta_map`)     |
+| `GSCAMM_SIGMA2_POLISH`    | `0.25`  | prior variance for the MAP polish (ALR space)  |
+| `GSCAMM_USE_STM_SPECTRAL` | `0`     | also fit STM with `init.type="Spectral"` (warm-start counterfactual) |
+| `GSCAMM_SIM_R`            | `100`   | replicates per scenario                        |
+| `GSCAMM_BOOT_B`           | `200`   | bootstrap replicates per fit                   |
 
 Suggested ablation sequence (each writes to `results/full_metrics.rds`,
 **save the previous file first** so you can compare):

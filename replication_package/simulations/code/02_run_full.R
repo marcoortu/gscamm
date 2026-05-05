@@ -66,9 +66,10 @@ for (ln in capture.output(str(DESIGN))) .log(ln)
 .log(sprintf("  fit_max_iter   = %d", DESIGN$fit_max_iter))
 .log(sprintf("  boot_max_iter  = %d", DESIGN$boot_max_iter))
 .log(sprintf("  noise_scale    = %.3f", DESIGN$noise_scale))
-.log(sprintf("  use_polish     = %s", DESIGN$use_polish))
-.log(sprintf("  sigma2_polish  = %.3f", DESIGN$sigma2_polish))
-.log(sprintf("  use_stm_random = %s", DESIGN$use_stm_random))
+.log(sprintf("  use_polish       = %s", DESIGN$use_polish))
+.log(sprintf("  sigma2_polish    = %.3f", DESIGN$sigma2_polish))
+.log(sprintf("  use_stm_spectral = %s (counter-factual; STM uses Random init by default)",
+             DESIGN$use_stm_spectral))
 
 doc_lengths <- list(baseline       = 1000,
                     high_covariate = 1000,
@@ -160,8 +161,13 @@ for (sc in DESIGN$scenarios) {
 ## Save final results
 ## ---------------------------------------------------------------------------
 results <- do.call(rbind, all_rows)
-results$method <- factor(results$method,
-                         levels = c("gscamm", "gscamm_boot", "lda", "stm"))
+## include all method levels actually present so opt-in comparators
+## (e.g. stm_spectral) are not coerced to NA by the factor cast.
+results$method <- factor(
+  results$method,
+  levels = intersect(c("gscamm", "gscamm_boot", "lda", "stm", "stm_spectral"),
+                     unique(as.character(results$method)))
+)
 
 saveRDS(results, file.path(RESULT_DIR, "full_metrics.rds"))
 write.csv(results, file.path(RESULT_DIR, "full_metrics.csv"), row.names = FALSE)

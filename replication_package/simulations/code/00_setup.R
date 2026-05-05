@@ -88,8 +88,11 @@ DEFAULT_DESIGN <- list(
   ## polish (MAP) controls
   use_polish     = .env_bool("GSCAMM_USE_POLISH", TRUE),
   sigma2_polish  = .env_num("GSCAMM_SIGMA2_POLISH", 0.25),
-  ## comparator switches
-  use_stm_random = .env_bool("GSCAMM_USE_STM_RANDOM", TRUE)
+  ## comparator switches: STM is fit with Random init by default (model-
+  ## to-model fair comparison). The Spectral (anchor-words) variant is an
+  ## opt-in counterfactual that quantifies the warm-start contribution
+  ## but is NOT a model comparison -- it is an init comparison.
+  use_stm_spectral = .env_bool("GSCAMM_USE_STM_SPECTRAL", FALSE)
 )
 
 ## ---------------------------------------------------------------------------
@@ -138,11 +141,15 @@ fit_lda_alr <- function(W, X, K, ref = K, alpha_lda = 0.1, ...) {
 ## ---- STM comparator ------------------------------------------------------
 ##
 ## Two STM variants are provided:
-##   fit_stm()         init.type = "Spectral"  (anchor-words; native default)
-##   fit_stm_random()  init.type = "Random"    (no warm start)
+##   fit_stm()           init.type = "Random"    (no warm start; canonical)
+##   fit_stm_spectral()  init.type = "Spectral"  (anchor-words; opt-in counter-factual)
 ## The Spectral init is a strong data-driven warm start (Arora-Halpern-Mimno
-## anchor-words algorithm); reporting both lets the reader isolate how much
-## of STM's apparent recovery edge comes from the init versus the model.
+## anchor-words algorithm). The ablation analysis (full_metrics_run{C,D,F})
+## showed it contributes ~70-200% of STM's apparent recovery edge over the
+## other models -- it is an init effect, not a model effect. To keep the
+## comparison apples-to-apples between models we use the Random init by
+## default; Spectral is reported only when GSCAMM_USE_STM_SPECTRAL=1 as an
+## explicit appendix-style counter-factual.
 .fit_stm_impl <- function(W, X, K, ref = K, max_iter = 75,
                           init_type = c("Spectral", "Random", "LDA"),
                           ...) {
@@ -191,11 +198,11 @@ fit_lda_alr <- function(W, X, K, ref = K, alpha_lda = 0.1, ...) {
 
 fit_stm <- function(W, X, K, ref = K, max_iter = 75, ...)
   .fit_stm_impl(W, X, K, ref = ref, max_iter = max_iter,
-                init_type = "Spectral", ...)
-
-fit_stm_random <- function(W, X, K, ref = K, max_iter = 75, ...)
-  .fit_stm_impl(W, X, K, ref = ref, max_iter = max_iter,
                 init_type = "Random", ...)
+
+fit_stm_spectral <- function(W, X, K, ref = K, max_iter = 75, ...)
+  .fit_stm_impl(W, X, K, ref = ref, max_iter = max_iter,
+                init_type = "Spectral", ...)
 
 ## ---- shared ALR-WLS used by LDA and STM comparators ----------------------
 .alr_wls <- function(Theta, X_std, ref = ncol(Theta), level = 0.95) {
@@ -489,21 +496,25 @@ run_one_replicate <- function(sim, scenario, design = DEFAULT_DESIGN,
   if (!is.null(m3))
     out$lda <- align_and_metrics(m3, sim, ref = K, method_tag = "lda")
 
-  ## STM (Spectral init = native default warm start)
+  ## STM with Random init (canonical model-to-model comparison; native
+  ## Spectral init is a strong anchor-words warm start that adds 35-200%
+  ## init-driven advantage on theta recovery, so it would not be a fair
+  ## model comparison -- see ablation runC/D/F vs stm_random in the paper).
   m4 <- tryCatch(fit_stm(sim$W, sim$X, K, ref = K),
                  error = function(e) { message("STM error: ", conditionMessage(e)); NULL })
   if (!is.null(m4))
     out$stm <- align_and_metrics(m4, sim, ref = K, method_tag = "stm")
 
-  ## STM random init (counter-factual: isolates the contribution of the
-  ## anchor-words spectral init to STM's apparent recovery edge)
-  if (isTRUE(design$use_stm_random)) {
-    m5 <- tryCatch(fit_stm_random(sim$W, sim$X, K, ref = K),
+  ## STM with Spectral (anchor-words) init: opt-in counter-factual that
+  ## quantifies the warm-start contribution to STM's apparent recovery edge.
+  ## Reported as an explicit init-comparison row, not as a model alternative.
+  if (isTRUE(design$use_stm_spectral)) {
+    m5 <- tryCatch(fit_stm_spectral(sim$W, sim$X, K, ref = K),
                    error = function(e) {
-                     message("STM(random) error: ", conditionMessage(e)); NULL })
+                     message("STM(spectral) error: ", conditionMessage(e)); NULL })
     if (!is.null(m5))
-      out$stm_random <- align_and_metrics(m5, sim, ref = K,
-                                          method_tag = "stm_random")
+      out$stm_spectral <- align_and_metrics(m5, sim, ref = K,
+                                            method_tag = "stm_spectral")
   }
 
   do.call(rbind, lapply(out, function(o) data.frame(o, scenario = scenario,

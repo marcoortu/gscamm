@@ -61,37 +61,45 @@ if (!dir.exists(RESULT_DIR)) dir.create(RESULT_DIR, recursive = TRUE)
 ## Configuration of the 4 incremental ablation runs (B/C/D/F).
 ## See replication_package/simulations/README.md for the rationale of each.
 ## ---------------------------------------------------------------------------
+## NOTE: this driver was used to validate the design changes that became
+## the new defaults (MAP polish on, STM uses Random init, noise_scale=1.0,
+## fit_max_iter=200). After validation, STM Random became the canonical
+## comparator and Spectral is the opt-in counterfactual; the env-var was
+## renamed accordingly. The original ablation logs and result files are
+## preserved on disk (full_metrics_run{B,C,D,F}.{rds,csv}). The configs
+## below replay the same ablation under the new naming for completeness;
+## for a production run prefer Rscript 02_run_full.R directly.
 ABLATION_CONFIGS <- list(
   list(tag  = "runB",
-       desc = "fit_max_iter=200, no polish, no stm_random",
-       env  = list(GSCAMM_USE_POLISH     = "0",
-                   GSCAMM_USE_STM_RANDOM = "0",
-                   GSCAMM_NOISE_SCALE    = "2.0",
-                   GSCAMM_FIT_MAX_ITER   = "200",
-                   GSCAMM_BOOT_MAX_ITER  = "60")),
+       desc = "fit_max_iter=200, no polish, no stm_spectral",
+       env  = list(GSCAMM_USE_POLISH       = "0",
+                   GSCAMM_USE_STM_SPECTRAL = "0",
+                   GSCAMM_NOISE_SCALE      = "2.0",
+                   GSCAMM_FIT_MAX_ITER     = "200",
+                   GSCAMM_BOOT_MAX_ITER    = "60")),
   list(tag  = "runC",
-       desc = "+stm_random comparator (isolate Spectral-init contribution)",
-       env  = list(GSCAMM_USE_POLISH     = "0",
-                   GSCAMM_USE_STM_RANDOM = "1",
-                   GSCAMM_NOISE_SCALE    = "2.0",
-                   GSCAMM_FIT_MAX_ITER   = "200",
-                   GSCAMM_BOOT_MAX_ITER  = "60")),
+       desc = "+stm_spectral comparator (isolate Spectral-init contribution)",
+       env  = list(GSCAMM_USE_POLISH       = "0",
+                   GSCAMM_USE_STM_SPECTRAL = "1",
+                   GSCAMM_NOISE_SCALE      = "2.0",
+                   GSCAMM_FIT_MAX_ITER     = "200",
+                   GSCAMM_BOOT_MAX_ITER    = "60")),
   list(tag  = "runD",
        desc = "+MAP polish (apples-to-apples theta estimator)",
-       env  = list(GSCAMM_USE_POLISH     = "1",
-                   GSCAMM_USE_STM_RANDOM = "1",
-                   GSCAMM_NOISE_SCALE    = "2.0",
-                   GSCAMM_FIT_MAX_ITER   = "200",
-                   GSCAMM_BOOT_MAX_ITER  = "60",
-                   GSCAMM_SIGMA2_POLISH  = "0.25")),
+       env  = list(GSCAMM_USE_POLISH       = "1",
+                   GSCAMM_USE_STM_SPECTRAL = "1",
+                   GSCAMM_NOISE_SCALE      = "2.0",
+                   GSCAMM_FIT_MAX_ITER     = "200",
+                   GSCAMM_BOOT_MAX_ITER    = "60",
+                   GSCAMM_SIGMA2_POLISH    = "0.25")),
   list(tag  = "runF",
        desc = "+noise_scale=1.0 (recalibrate boot coverage)",
-       env  = list(GSCAMM_USE_POLISH     = "1",
-                   GSCAMM_USE_STM_RANDOM = "1",
-                   GSCAMM_NOISE_SCALE    = "1.0",
-                   GSCAMM_FIT_MAX_ITER   = "200",
-                   GSCAMM_BOOT_MAX_ITER  = "60",
-                   GSCAMM_SIGMA2_POLISH  = "0.25"))
+       env  = list(GSCAMM_USE_POLISH       = "1",
+                   GSCAMM_USE_STM_SPECTRAL = "1",
+                   GSCAMM_NOISE_SCALE      = "1.0",
+                   GSCAMM_FIT_MAX_ITER     = "200",
+                   GSCAMM_BOOT_MAX_ITER    = "60",
+                   GSCAMM_SIGMA2_POLISH    = "0.25"))
 )
 
 R_arg <- Sys.getenv("GSCAMM_SIM_R",  unset = "100")

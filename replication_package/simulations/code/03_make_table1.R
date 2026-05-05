@@ -21,9 +21,10 @@ if (!file.exists(infile))
   stop("Run 02_run_full.R first to produce ", infile)
 
 R <- readRDS(infile)
-## detect available methods (stm_random is opt-in)
+## detect available methods (stm_spectral is opt-in counter-factual;
+## STM means Random init by default in this replication package)
 present_methods <- intersect(
-  c("gscamm", "gscamm_boot", "lda", "stm", "stm_random"),
+  c("gscamm", "gscamm_boot", "lda", "stm", "stm_spectral"),
   unique(as.character(R$method))
 )
 R$method   <- factor(R$method, levels = present_methods)
