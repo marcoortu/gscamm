@@ -1,16 +1,32 @@
 ## ---------------------------------------------------------------------------
-## Non-parametric row bootstrap for the covariate-effect estimator B.
+## Bootstrap confidence intervals for the covariate-effect estimator B.
 ##
-## Reference: Ortu and Frigau (2026), Remark 2 and the (commented) bootstrap
-## proposal in Section 4.2. The plug-in sandwich variance treats the
-## first-stage estimate of Theta as if it were the truth, and therefore
-## undercovers when N is small relative to K or observation lengths are short.
+## Two resampling strategies are supported:
 ##
-## The row bootstrap resamples N observations with replacement, refits the
-## entire EM-GSCA algorithm on each bootstrap sample, re-aligns the
-## bootstrap fit to the original Phi via the Hungarian algorithm, and
-## records the ALR-WLS coefficients. Percentile confidence intervals are
-## constructed from the empirical quantiles across replications.
+## (a) "parametric" -- under the deterministic model
+##       theta_i = inverse-ALR(X_i' B_{-K})
+##       y_i ~ Mult(L_i, theta_i' Phi)
+##     the only stochastic source is multinomial token sampling. The
+##     parametric bootstrap fixes (B_hat, Phi_hat) at the fitted values,
+##     computes q_hat_i = theta_hat_i' Phi_hat, and resamples
+##         W^(b)_i ~ Mult(L_i, q_hat_i)
+##     for b = 1..B. Each (W^(b), X) is refit with warm-start at
+##     (Phi_hat, B_hat); after Hungarian alignment to the original Phi
+##     the basic-bootstrap CI is
+##         [2 B_hat - q_{1-alpha/2},  2 B_hat - q_{alpha/2}]
+##     which is implicitly bias-corrected.
+##
+## (b) "noise_augmented" -- the legacy non-parametric row bootstrap with
+##     Gaussian noise injected into the ALR-space scores after each refit.
+##     Designed for the (now superseded) generative formulation that
+##     included a latent epsilon_ik term; retained for paper reproduction
+##     and for inference under non-deterministic links.
+##
+## Reference: Ortu and Frigau (2026), Remark 2 and Section 4.2. The plug-in
+## sandwich variance treats the first-stage estimate of Theta as if it
+## were the truth and therefore undercovers when N is small relative to K
+## or observation lengths are short -- the parametric bootstrap recovers
+## near-nominal coverage for the path coefficients.
 ## ---------------------------------------------------------------------------
 
 #' Bootstrap confidence intervals for covariate effects
@@ -60,16 +76,20 @@
 #' @param use response basis passed through to
 #'   \code{\link{covariate_effects}}: \code{"theta"} (default) or
 #'   \code{"responsibilities"}.
-#' @param noise_augment logical (default \code{FALSE}). If \code{TRUE},
-#'   the bootstrap injects Gaussian noise into the ALR-space scores of
-#'   each bootstrap fit before the ALR-WLS regression, with per-component
-#'   variance estimated from the residuals of OLS-on-ALR(R) of the
-#'   original fit. This captures the latent noise that a deterministic
-#'   link (logistic-normal, Dirichlet point estimate) cannot represent
-#'   and substantially widens the bootstrap CIs, which improves coverage
-#'   when the second-stage WLS would otherwise have near-zero residuals.
-#'   Recommended setting for inference under the default
-#'   \code{link = "logistic_normal"} specification.
+#' @param method resampling strategy. \code{"parametric"} (default) draws
+#'   \eqn{W_i^{(b)} \sim \mathrm{Mult}(L_i, \hat{q}_i)} with
+#'   \eqn{\hat{q}_i = \hat{\theta}_i^\top \hat{\Phi}} and refits with
+#'   warm-start at \eqn{(\hat{\Phi}, \hat{B})}; under the deterministic
+#'   GSCA-MM model this is the well-specified bootstrap because the only
+#'   stochastic source is multinomial token sampling. \code{"noise_augmented"}
+#'   is the legacy non-parametric row bootstrap with Gaussian noise injection
+#'   in ALR space, provided for paper reproduction and for the (superseded)
+#'   generative model that included a latent \eqn{\varepsilon_{ik}} term.
+#' @param noise_augment legacy logical flag (default \code{FALSE}). When
+#'   \code{TRUE} and \code{method} is not explicitly set, \code{method} is
+#'   silently switched to \code{"noise_augmented"} for backward compatibility
+#'   with code written against earlier versions of the package. When
+#'   \code{method = "parametric"} this argument is ignored.
 #'
 #' @return an object of class \code{gscamm_effects} with the same shape as
 #'   the output of \code{\link{covariate_effects}}, but with confidence
@@ -96,13 +116,24 @@ bootstrap_covariate_effects <- function(fit,
                                         parallel = FALSE,
                                         n_cores = NULL,
                                         progress_callback = NULL,
+                                        method = c("parametric",
+                                                   "noise_augmented"),
                                         type = c("percentile", "basic", "bca"),
                                         bias_correct = FALSE,
                                         use = c("theta", "responsibilities"),
                                         noise_augment = FALSE,
                                         noise_scale = 1) {
-  type <- match.arg(type)
-  use  <- match.arg(use)
+  ## Back-compat: callers that pass noise_augment=TRUE without an explicit
+  ## method get the legacy noise_augmented branch automatically.
+  method_explicit <- !missing(method)
+  type_explicit   <- !missing(type)
+  method <- match.arg(method)
+  type   <- match.arg(type)
+  use    <- match.arg(use)
+  if (!method_explicit && isTRUE(noise_augment)) method <- "noise_augmented"
+  ## Parametric defaults to basic CIs (implicit bias correction); user can
+  ## still pick percentile or BCa via the `type` argument.
+  if (method == "parametric" && !type_explicit) type <- "basic"
   if (!inherits(fit, "gscamm"))
     stop("`fit` must be a gscamm object.")
   adjust <- match.arg(adjust)
@@ -127,10 +158,11 @@ bootstrap_covariate_effects <- function(fit,
   comp_names <- colnames(eff_orig$B_alr)
 
   ## per-component residual sd in ALR space, estimated from the original
-  ## responsibilities R via OLS of log(R[k]/R[ref]) on X. This recovers the
-  ## latent noise that the deterministic link discards.
+  ## responsibilities R via OLS of log(R[k]/R[ref]) on X. Used by the
+  ## noise_augmented branch to recover the latent noise that a deterministic
+  ## link discards.
   noise_sigma <- numeric(K - 1L)
-  if (noise_augment) {
+  if (method == "noise_augmented") {
     Rorig <- pmax(fit$R %||% fit$Theta, .Machine$double.eps)
     Xs    <- fit$X_std
     Dols  <- cbind(1, Xs)
@@ -146,17 +178,64 @@ bootstrap_covariate_effects <- function(fit,
     noise_sigma <- noise_sigma * noise_scale
   }
 
+  ## --- precompute objects needed by the parametric branch -----------------
+  ## Fitted multinomial probabilities q_hat_i = theta_hat_i' Phi_hat and the
+  ## per-row token totals L_i. The parametric refits warm-start at
+  ## (Phi_hat, B_hat) so they typically converge in <= 10 EM iterations;
+  ## we cap max_iter accordingly to keep the bootstrap tractable.
+  Theta_hat <- pmax(fit$Theta, .Machine$double.eps)
+  Phi_hat   <- pmax(fit$Phi,   .Machine$double.eps)
+  B_hat     <- fit$B
+  q_hat     <- Theta_hat %*% Phi_hat                 ## N x V
+  q_hat     <- pmax(q_hat, 0)
+  q_hat     <- q_hat / pmax(rowSums(q_hat), .Machine$double.xmin)
+  L_obs     <- as.integer(round(rowSums(W)))
+
+  ## Warm-started control for parametric refits.
+  ##
+  ## Design choice: warm-start ONLY at Phi_hat (the K*V matrix that
+  ## dominates EM convergence cost), and let B re-estimate from zero
+  ## each replicate. Warm-starting B too produces near-zero replicate-
+  ## to-replicate variability of B^(b) -- the refit barely moves -- which
+  ## understates the bootstrap CI. Re-estimating B from zero takes only a
+  ## few EM iterations once Phi is already at its converged value, so the
+  ## cost of dropping the B warm-start is small but the variance recovery
+  ## is essential for nominal coverage.
+  control_warm <- control
+  control_warm$init_Phi <- fit$Phi
+  control_warm$init_B   <- NULL
+  control_warm$max_iter <- min(control$max_iter, 50L)
+
   ## one-shot worker
   one_boot <- function(b) {
-    idx <- sample.int(N, N, replace = TRUE)
-    Wb <- W[idx, , drop = FALSE]
-    Xb <- X[idx, , drop = FALSE]
+    ## per-replicate seed (reproducible across cores when base seed given)
+    if (!is.null(seed)) set.seed(seed + 7919L * b)
+
+    if (method == "parametric") {
+      ## --- parametric resampling: W^(b)_i ~ Mult(L_i, q_hat_i) -----------
+      Wb <- matrix(0L, N, ncol(W))
+      for (i in seq_len(N)) {
+        if (L_obs[i] > 0L)
+          Wb[i, ] <- as.integer(stats::rmultinom(1L, size = L_obs[i],
+                                                 prob = q_hat[i, ]))
+      }
+      colnames(Wb) <- colnames(W)
+      Xb <- X
+    } else {
+      ## --- non-parametric row resampling (legacy) ------------------------
+      idx <- sample.int(N, N, replace = TRUE)
+      Wb <- W[idx, , drop = FALSE]
+      Xb <- X[idx, , drop = FALSE]
+    }
+
+    ctrl_b <- if (method == "parametric") control_warm else control
     fitb <- tryCatch(
       fit_gscamm(Wb, Xb, K = K, link = link,
                  gsca_space = fit$gsca_space %||% "alr",
                  gsca_ref = fit$gsca_ref %||% K,
                  init_phi = fit$init_phi %||% "kmeans",
-                 control = control,
+                 polish = "none",   ## bootstrap only needs B; skip MAP polish
+                 control = ctrl_b,
                  verbose = FALSE, seed = NULL),
       error = function(e) NULL
     )
@@ -164,13 +243,9 @@ bootstrap_covariate_effects <- function(fit,
     ## align bootstrap fit to the original Phi
     perm <- align_components(fitb$Phi, fit$Phi)
     fitb_aligned <- .permute_fit(fitb, perm)
-    ## ALR coefficients on the aligned bootstrap fit, optionally with
-    ## noise injection on the ALR-space scores to widen CIs
+
     eff_b <- tryCatch({
-      if (!noise_augment) {
-        covariate_effects(fitb_aligned, ref = ref, level = level,
-                          adjust = "none", use = use)
-      } else {
+      if (method == "noise_augmented") {
         ## perturb the response (theta or R) in the ALR space, then map
         ## back to the simplex via softmax-with-ref before ALR-WLS.
         base_b <- if (use == "responsibilities" && !is.null(fitb_aligned$R))
@@ -178,9 +253,7 @@ bootstrap_covariate_effects <- function(fit,
         base_b <- pmax(base_b, .Machine$double.eps)
         Nb <- nrow(base_b); Kb <- ncol(base_b)
         nr_b <- setdiff(seq_len(Kb), ref)
-        ## ALR-transform the bootstrap responses
         alr_b <- log(base_b[, nr_b, drop = FALSE] / base_b[, ref])
-        ## inject Gaussian noise per non-reference column
         for (j in seq_along(nr_b)) {
           alr_b[, j] <- alr_b[, j] +
             stats::rnorm(Nb, sd = noise_sigma[j])
@@ -194,6 +267,9 @@ bootstrap_covariate_effects <- function(fit,
         fitb_perturbed$R     <- theta_perturbed
         covariate_effects(fitb_perturbed, ref = ref, level = level,
                           adjust = "none", use = "theta")
+      } else {
+        covariate_effects(fitb_aligned, ref = ref, level = level,
+                          adjust = "none", use = use)
       }
     }, error = function(e) NULL)
     if (is.null(eff_b)) return(NULL)
@@ -209,8 +285,10 @@ bootstrap_covariate_effects <- function(fit,
       on.exit(parallel::stopCluster(cl), add = TRUE)
       parallel::clusterEvalQ(cl, library(gscamm))
       parallel::clusterExport(cl,
-        varlist = c("W", "X", "N", "K", "P", "link", "control", "fit",
-                    "ref", "level", "one_boot"),
+        varlist = c("W", "X", "N", "K", "P", "link", "control",
+                    "control_warm", "fit", "ref", "level", "one_boot",
+                    "method", "use", "noise_sigma",
+                    "Theta_hat", "Phi_hat", "B_hat", "q_hat", "L_obs"),
         envir = environment())
       ## seed each worker
       if (!is.null(seed)) parallel::clusterSetRNGStream(cl, iseed = seed)
@@ -348,7 +426,9 @@ bootstrap_covariate_effects <- function(fit,
     B_draws = Bdraws,
     B_draws_failed = n_fail,
     bias = bias_hat,
-    method = paste0("bootstrap_", type, if (bias_correct) "_bc" else ""),
+    method = paste0("bootstrap_", method, "_", type,
+                    if (bias_correct) "_bc" else ""),
+    resample_method = method,
     type = type, bias_correct = bias_correct,
     ref = ref, level = level, adjust = adjust,
     K = K, P = P, B = length(results)

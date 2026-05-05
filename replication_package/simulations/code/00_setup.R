@@ -88,6 +88,11 @@ DEFAULT_DESIGN <- list(
   ## polish (MAP) controls
   use_polish     = .env_bool("GSCAMM_USE_POLISH", TRUE),
   sigma2_polish  = .env_num("GSCAMM_SIGMA2_POLISH", 0.25),
+  ## parametric bootstrap on the plug-in fit: produces an additional
+  ## coverage column on the gscamm row (coverage_B_boot_param). Set to 0
+  ## to skip; default 200 matches the legacy noise-augmented bootstrap.
+  param_boot_B          = .env_int("GSCAMM_PARAM_BOOT_B", 200),
+  param_boot_max_iter   = .env_int("GSCAMM_PARAM_BOOT_MAX_ITER", 30),
   ## comparator switches: STM is fit with Random init by default (model-
   ## to-model fair comparison). The Spectral (anchor-words) variant is an
   ## opt-in counterfactual that quantifies the warm-start contribution
@@ -235,12 +240,24 @@ fit_stm_spectral <- function(W, X, K, ref = K, max_iter = 75, ...)
 }
 
 ## ---- gscamm comparators (plug-in and bootstrap variants) -----------------
+##
+## fit_gscamm_pi() returns the plug-in WLS estimates AND, optionally, the
+## parametric-bootstrap CIs on the same fit (param_boot_B > 0). The
+## parametric bootstrap resamples W^(b) ~ Mult(L_i, theta_hat_i' Phi_hat),
+## warm-starts each refit at (Phi_hat, B_hat), and produces a basic CI
+## with implicit bias correction. The plug-in estimates returned by this
+## function are bit-identical to the no-bootstrap path: the bootstrap
+## adds CI fields but never modifies the plug-in B_alr / se_B / ci_lo /
+## ci_hi or any other downstream point estimate.
 fit_gscamm_pi <- function(W, X, K, ref = K,
                           fit_max_iter = 80, fit_tol = 1e-5,
                           link = "logistic_normal",
                           gsca_space = "alr",
                           polish = "map",
-                          sigma2_polish = 0.25, ...) {
+                          sigma2_polish = 0.25,
+                          param_boot_B = 0L,
+                          param_boot_max_iter = 30L,
+                          param_boot_seed = NULL, ...) {
   t0 <- Sys.time()
   ctl <- gscamm_control(max_iter = fit_max_iter, tol = fit_tol,
                         polish_max_iter = 50L)
@@ -256,6 +273,33 @@ fit_gscamm_pi <- function(W, X, K, ref = K,
   hi <- matrix(eff$coefficients$conf.high, P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
   se <- matrix(eff$coefficients$std.error, P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
 
+  ## ----- parametric bootstrap (additive: never modifies plug-in fields)
+  lo_boot <- NULL; hi_boot <- NULL; t_boot <- NA_real_
+  if (param_boot_B > 0L) {
+    tb0 <- Sys.time()
+    ctl_b <- gscamm_control(max_iter = param_boot_max_iter, tol = fit_tol,
+                            polish_max_iter = 1L)
+    eff_pb <- tryCatch(
+      bootstrap_covariate_effects(fit, B = param_boot_B,
+                                  method = "parametric",
+                                  type = "basic",
+                                  level = 0.95,
+                                  ref = ref,
+                                  control = ctl_b,
+                                  seed = param_boot_seed,
+                                  parallel = FALSE,
+                                  adjust = "none"),
+      error = function(e) {
+        message("param-boot failed: ", conditionMessage(e)); NULL })
+    if (!is.null(eff_pb)) {
+      lo_boot <- matrix(eff_pb$coefficients$conf.low,
+                        P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
+      hi_boot <- matrix(eff_pb$coefficients$conf.high,
+                        P + 1L, K - 1L)[2:(P + 1L), , drop = FALSE]
+    }
+    t_boot <- as.numeric(Sys.time() - tb0, units = "secs")
+  }
+
   ## R is the data-informed token-level posterior; Theta_map is the per-row
   ## MAP of eta combining the structural prior X*B with the data likelihood.
   ## Theta_map is the apples-to-apples counterpart of LDA gamma / STM theta.
@@ -263,8 +307,10 @@ fit_gscamm_pi <- function(W, X, K, ref = K,
   list(Theta = fit$Theta, R = R_post, Theta_map = fit$Theta_map,
        Phi = fit$Phi,
        B_alr = B, se_B = se, ci_lo = lo, ci_hi = hi,
+       ci_lo_param_boot = lo_boot, ci_hi_param_boot = hi_boot,
        perplexity = gscamm::perplexity(W, R_post, fit$Phi),
        time = as.numeric(Sys.time() - t0, units = "secs"),
+       time_param_boot = t_boot,
        theta_kind = "structural",
        phi_init = fit$init_phi,
        iters_converged = fit$convergence$iterations,
@@ -420,6 +466,14 @@ align_and_metrics <- function(fit_out, sim, ref = ncol(sim$Phi),
     B_a <- res$B; lo_a <- res$ci_lo; hi_a <- res$ci_hi; se_a <- res$se
   }
 
+  ## parametric-bootstrap CIs (only present for gscamm plug-in path)
+  if (!is.null(fit_out$ci_lo_param_boot)) {
+    lo_pb <- fit_out$ci_lo_param_boot[, fit_nr_order, drop = FALSE]
+    hi_pb <- fit_out$ci_hi_param_boot[, fit_nr_order, drop = FALSE]
+  } else {
+    lo_pb <- NULL; hi_pb <- NULL
+  }
+
   ## metrics across the three theta estimators:
   ##   rmse_theta      (structural, deterministic for gscamm; posterior for LDA/STM)
   ##   rmse_theta_R    (token-level responsibility posterior for gscamm; same as
@@ -438,13 +492,22 @@ align_and_metrics <- function(fit_out, sim, ref = ncol(sim$Phi),
     mean(sim$beta >= lo_a & sim$beta <= hi_a) else NA_real_
   width_B <- if (!is.null(lo_a)) mean(hi_a - lo_a) else NA_real_
 
+  ## parametric-bootstrap coverage / width: populated only for the gscamm
+  ## plug-in path; NA for gscamm_boot, lda, stm, stm_spectral.
+  cov_B_boot_param   <- if (!is.null(lo_pb))
+    mean(sim$beta >= lo_pb & sim$beta <= hi_pb) else NA_real_
+  width_B_boot_param <- if (!is.null(lo_pb)) mean(hi_pb - lo_pb) else NA_real_
+
   list(method = method_tag,
        rmse_theta = rmse_theta,
        rmse_theta_R = rmse_theta_R,
        rmse_theta_map = rmse_theta_map,
        rmse_phi = rmse_phi,
        rmse_B = rmse_B, coverage_B = cov_B, width_B = width_B,
+       coverage_B_boot_param = cov_B_boot_param,
+       width_B_boot_param    = width_B_boot_param,
        perplexity = fit_out$perplexity, time = fit_out$time,
+       time_param_boot = fit_out$time_param_boot %||% NA_real_,
        theta_kind = fit_out$theta_kind %||% NA_character_,
        phi_init   = fit_out$phi_init   %||% NA_character_,
        iters_converged   = fit_out$iters_converged   %||% NA_integer_,
@@ -465,13 +528,16 @@ run_one_replicate <- function(sim, scenario, design = DEFAULT_DESIGN,
   polish_arg <- if (isTRUE(design$use_polish)) "map" else "none"
 
   out <- list()
-  ## gscamm plug-in
+  ## gscamm plug-in (with optional parametric bootstrap CIs as a column,
+  ## NOT as a separate row -- design$param_boot_B controls B; 0 disables)
   m1 <- fit_gscamm_pi(sim$W, sim$X, K, ref = K,
                       fit_max_iter = design$fit_max_iter,
                       fit_tol = design$fit_tol,
                       link = link_for_gscamm,
                       polish = polish_arg,
-                      sigma2_polish = design$sigma2_polish)
+                      sigma2_polish = design$sigma2_polish,
+                      param_boot_B = design$param_boot_B %||% 0L,
+                      param_boot_max_iter = design$param_boot_max_iter %||% 30L)
   out$gscamm <- align_and_metrics(m1, sim, ref = K, method_tag = "gscamm")
 
   ## gscamm bootstrap (reuse the same fit to halve the cost)

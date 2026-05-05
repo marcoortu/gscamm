@@ -228,7 +228,9 @@ fit_gscamm <- function(W, X, K,
   ## --- initialize Phi on the simplex ---------------------------------------
   if (!is.null(control$init_Phi)) {
     Phi <- as.matrix(control$init_Phi)
-    if (!identical(dim(Phi), c(K, V)))
+    ## type-permissive comparison: dim() returns integer, c(K, V) may be
+    ## double depending on caller (e.g. K passed as numeric)
+    if (!isTRUE(all(dim(Phi) == c(K, V))))
       stop("init_Phi must have dimension K x V.")
   } else if (init_phi == "kmeans") {
     Phi <- .init_phi_kmeans(W, K)
@@ -241,7 +243,7 @@ fit_gscamm <- function(W, X, K,
   ## --- initialize B and Gamma ----------------------------------------------
   if (!is.null(control$init_B)) {
     B <- as.matrix(control$init_B)
-    if (!identical(dim(B), c(P, K)))
+    if (!isTRUE(all(dim(B) == c(P, K))))
       stop("init_B must have dimension P x K.")
   } else {
     B <- matrix(0, P, K)

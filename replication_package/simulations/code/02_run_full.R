@@ -68,6 +68,8 @@ for (ln in capture.output(str(DESIGN))) .log(ln)
 .log(sprintf("  noise_scale    = %.3f", DESIGN$noise_scale))
 .log(sprintf("  use_polish       = %s", DESIGN$use_polish))
 .log(sprintf("  sigma2_polish    = %.3f", DESIGN$sigma2_polish))
+.log(sprintf("  param_boot_B     = %d (0 = disabled; populates coverage_B_boot_param column)",
+             DESIGN$param_boot_B %||% 0L))
 .log(sprintf("  use_stm_spectral = %s (counter-factual; STM uses Random init by default)",
              DESIGN$use_stm_spectral))
 

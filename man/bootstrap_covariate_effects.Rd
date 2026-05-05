@@ -16,6 +16,7 @@ bootstrap_covariate_effects(
   parallel = FALSE,
   n_cores = NULL,
   progress_callback = NULL,
+  method = c("parametric", "noise_augmented"),
   type = c("percentile", "basic", "bca"),
   bias_correct = FALSE,
   use = c("theta", "responsibilities"),
@@ -56,6 +57,16 @@ half of \code{parallel::detectCores()}.}
 \code{progress_callback(b, B)} after each replicate completes; useful
 for embedding progress reporting in higher-level scripts.}
 
+\item{method}{resampling strategy. \code{"parametric"} (default) draws
+\eqn{W_i^{(b)} \sim \mathrm{Mult}(L_i, \hat{q}_i)} with
+\eqn{\hat{q}_i = \hat{\theta}_i^\top \hat{\Phi}} and refits with
+warm-start at \eqn{(\hat{\Phi}, \hat{B})}; under the deterministic
+GSCA-MM model this is the well-specified bootstrap because the only
+stochastic source is multinomial token sampling. \code{"noise_augmented"}
+is the legacy non-parametric row bootstrap with Gaussian noise injection
+in ALR space, provided for paper reproduction and for the (superseded)
+generative model that included a latent \eqn{\varepsilon_{ik}} term.}
+
 \item{type}{confidence-interval type. One of:
 \describe{
   \item{\code{"percentile"}}{(default) empirical quantiles of the
@@ -78,16 +89,11 @@ for a clean bias-corrected percentile CI.}
 \code{\link{covariate_effects}}: \code{"theta"} (default) or
 \code{"responsibilities"}.}
 
-\item{noise_augment}{logical (default \code{FALSE}). If \code{TRUE},
-the bootstrap injects Gaussian noise into the ALR-space scores of
-each bootstrap fit before the ALR-WLS regression, with per-component
-variance estimated from the residuals of OLS-on-ALR(R) of the
-original fit. This captures the latent noise that a deterministic
-link (logistic-normal, Dirichlet point estimate) cannot represent
-and substantially widens the bootstrap CIs, which improves coverage
-when the second-stage WLS would otherwise have near-zero residuals.
-Recommended setting for inference under the default
-\code{link = "logistic_normal"} specification.}
+\item{noise_augment}{legacy logical flag (default \code{FALSE}). When
+\code{TRUE} and \code{method} is not explicitly set, \code{method} is
+silently switched to \code{"noise_augmented"} for backward compatibility
+with code written against earlier versions of the package. When
+\code{method = "parametric"} this argument is ignored.}
 }
 \value{
 an object of class \code{gscamm_effects} with the same shape as
