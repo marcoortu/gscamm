@@ -1,18 +1,18 @@
-\begin{tabular}{llrrrrrrrr}
+\begin{tabular}{llrrrrrrrrr}
 \hline
-condition & method & RMSE\_theta\_mean & RMSE\_theta\_sd & RMSE\_phi\_mean & RMSE\_B\_mean & RMSE\_B\_sd & coverage\_B\_mean & perplexity\_mean & time\_sec\_mean \\
+condition & method & RMSE\_theta\_mean & RMSE\_theta\_sd & RMSE\_theta\_map\_mean & RMSE\_phi\_mean & RMSE\_B\_mean & RMSE\_B\_sd & coverage\_B\_mean & perplexity\_mean & time\_sec\_mean \\
 \hline
-baseline & gscamm & 0.145 & 0.012 & 0.004 & 0.824 & 0.094 & 0.703 & 192.814 & 2.57 \\
-baseline & gscamm_boot & 0.145 & 0.012 & 0.004 & 0.869 & 0.116 & 1.000 & 192.814 & 255.04 \\
-baseline & lda & 0.103 & 0.032 & 0.004 & 1.030 & 0.280 & 0.108 & 164.186 & 48.13 \\
-baseline & stm & 0.036 & 0.038 & 0.002 & 0.458 & 0.470 & 0.339 & 162.944 & 8.05 \\
-high_covariate & gscamm & 0.147 & 0.011 & 0.004 & 0.818 & 0.094 & 0.701 & 191.216 & 2.39 \\
-high_covariate & gscamm_boot & 0.147 & 0.011 & 0.004 & 0.854 & 0.117 & 1.000 & 191.216 & 253.81 \\
-high_covariate & lda & 0.104 & 0.033 & 0.004 & 0.951 & 0.229 & 0.144 & 160.585 & 45.66 \\
-high_covariate & stm & 0.035 & 0.035 & 0.002 & 0.453 & 0.366 & 0.474 & 159.030 & 6.48 \\
-high_sparsity & gscamm & 0.154 & 0.012 & 0.005 & 0.843 & 0.105 & 0.635 & 162.972 & 3.02 \\
-high_sparsity & gscamm_boot & 0.154 & 0.012 & 0.005 & 0.870 & 0.181 & 1.000 & 162.972 & 288.91 \\
-high_sparsity & lda & 0.156 & 0.023 & 0.004 & 0.905 & 0.180 & 0.299 & 134.451 & 2.39 \\
-high_sparsity & stm & 0.084 & 0.031 & 0.004 & 0.913 & 0.333 & 0.144 & 139.305 & 9.89 \\
+baseline & gscamm & 0.145 & 0.012 & 0.096 & 0.004 & 0.824 & 0.094 & 0.703 & 192.814 & 10.88 \\
+baseline & gscamm_boot & 0.145 & 0.012 & 0.096 & 0.004 & 0.771 & 0.127 & 0.997 & 192.814 & 957.02 \\
+baseline & lda & 0.103 & 0.032 & 0.103 & 0.004 & 1.030 & 0.280 & 0.108 & 164.186 & 46.23 \\
+baseline & stm & 0.117 & 0.030 & 0.117 & 0.006 & 1.117 & 0.220 & 0.054 & 168.340 & 29.35 \\
+high_covariate & gscamm & 0.147 & 0.011 & 0.089 & 0.004 & 0.818 & 0.094 & 0.701 & 191.216 & 10.67 \\
+high_covariate & gscamm_boot & 0.147 & 0.011 & 0.089 & 0.004 & 0.757 & 0.123 & 0.998 & 191.216 & 955.15 \\
+high_covariate & lda & 0.104 & 0.033 & 0.104 & 0.004 & 0.951 & 0.229 & 0.144 & 160.585 & 44.72 \\
+high_covariate & stm & 0.115 & 0.032 & 0.115 & 0.006 & 1.053 & 0.246 & 0.099 & 165.568 & 28.44 \\
+high_sparsity & gscamm & 0.154 & 0.012 & 0.118 & 0.005 & 0.843 & 0.105 & 0.635 & 162.942 & 4.98 \\
+high_sparsity & gscamm_boot & 0.154 & 0.012 & 0.118 & 0.005 & 0.807 & 0.172 & 0.989 & 162.942 & 635.33 \\
+high_sparsity & lda & 0.156 & 0.023 & 0.156 & 0.004 & 0.905 & 0.180 & 0.299 & 134.451 & 2.40 \\
+high_sparsity & stm & 0.126 & 0.025 & 0.126 & 0.006 & 0.963 & 0.183 & 0.058 & 151.617 & 11.78 \\
 \hline
 \end{tabular}
