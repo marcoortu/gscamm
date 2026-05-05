@@ -1,7 +1,7 @@
 ## ---------------------------------------------------------------------------
 ## Component selection: fits the model for each K in a grid and reports
 ## perplexity (and optionally a held-out variant). Generalizes the
-## search_optimal_topics utility mentioned in Section 5 of the paper.
+## component-count selection routine described in Section 5 of the paper.
 ## ---------------------------------------------------------------------------
 
 #' Search the optimal number of components by perplexity

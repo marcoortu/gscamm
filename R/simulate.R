@@ -2,10 +2,19 @@
 ## Synthetic data generator implementing the simulation design of Section 4
 ## of Ortu and Frigau (2026), generalized to mixture-of-multinomials models.
 ##
+## Note: the GSCA-MM *model* used by `fit_gscamm` is deterministic
+## (eta = X B_{-K}, theta = inverse-ALR(eta); see fit_gscamm.R). The
+## additive Gaussian term in the ALR predictor below is part of the
+## *data-generating mechanism* only -- it perturbs the simulated theta
+## away from a degenerate covariate-driven manifold so that we can study
+## recovery of B from noisy mixture weights, and is the analogue of the
+## first-stage uncertainty addressed by the bootstrap and by the
+## responsibility-based plug-in inference at fit time.
+##
 ## Three scenarios are supported:
-##  - "baseline":      logistic-normal, sigma = 0.3, lengths Poisson(1000)
+##  - "baseline":       logistic-normal, sigma = 0.3, lengths Poisson(1000)
 ##  - "high_covariate": Dirichlet(alpha * theta) with alpha = 50
-##  - "high_sparsity": ALR-then-threshold at 0.03, lengths Poisson(20)
+##  - "high_sparsity":  ALR-then-threshold at 0.03, lengths Poisson(20)
 ## ---------------------------------------------------------------------------
 
 #' Simulate a GSCA-MM dataset
@@ -95,11 +104,11 @@ simulate_gscamm <- function(N = 1000, V = 500, K = 10, P = 8,
     Theta <- Theta / rs
   }
 
-  ## --- topic-word distributions Phi ----------------------------------------
+  ## --- component-category distributions Phi --------------------------------
   Phi <- matrix(stats::rgamma(K * V, phi_alpha, 1), K, V)
   Phi <- Phi / rowSums(Phi)
 
-  ## --- sample documents from the multinomial mixture -----------------------
+  ## --- sample observations from the multinomial mixture --------------------
   q <- Theta %*% Phi
   L <- pmax(stats::rpois(N, doc_length_mean), doc_length_min)
   W <- matrix(0L, N, V)

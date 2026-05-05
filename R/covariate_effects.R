@@ -37,15 +37,24 @@
 #'   if they are available in \code{object$X_raw}.
 #' @param X_new optional alternative design matrix to use instead of the
 #'   one stored in the fit. Must have the same number of rows as the data.
-#' @param use response basis for the ALR-WLS regression: either
-#'   \code{"theta"} (default; the converged mixture proportions, as
-#'   described in Section 2.4 of the paper) or \code{"responsibilities"}
-#'   (the document-level posterior responsibilities from the final
-#'   E-step). The latter has the practical advantage that residuals
-#'   capture data-driven variability beyond the deterministic link
-#'   transform, which improves plug-in confidence-interval coverage when
-#'   the model link makes \eqn{\boldsymbol{\Theta}} a near-deterministic
-#'   function of the covariates.
+#' @param use response basis for the ALR-WLS *point* estimate. Either
+#'   \code{"theta"} (default; the converged mixture proportions, matching
+#'   Section 2.4 of the paper) or \code{"responsibilities"} (the
+#'   unit-level posterior responsibilities from the final E-step). Theta
+#'   is concentrated by the deterministic link and is the canonical
+#'   target of the structural ALR coefficients, so it gives the point
+#'   estimate with smallest bias against the data-generating beta;
+#'   responsibilities give a noisier estimate of similar mean but with
+#'   different variance properties.
+#' @param var_method estimator for the second-stage variance: either
+#'   \code{"hybrid"} (default) or \code{"hc0"}. The hybrid estimator
+#'   computes \eqn{\hat\sigma_k^2} from R-based residuals
+#'   \eqn{e_i = \log(r_{ik}/r_{i,\mathrm{ref}}) - x_i^\top \hat\beta_k}
+#'   and forms \eqn{V = \hat\sigma_k^2 (D^\top W D)^{-1}}. This is the
+#'   recommended workflow under the deterministic link: Theta yields a
+#'   small-bias point estimate while R supplies the first-stage residual
+#'   variance that is otherwise lost. The HC0 sandwich is retained for
+#'   parity with the original paper.
 #'
 #' @return an object of class \code{gscamm_effects}, a list with components:
 #'   \item{coefficients}{long-format data frame with columns
@@ -69,19 +78,23 @@ covariate_effects <- function(object,
                                          "fdr", "none"),
                               standardize = TRUE,
                               X_new = NULL,
-                              use = c("theta", "responsibilities")) {
+                              use = c("theta", "responsibilities"),
+                              var_method = c("hybrid", "hc0")) {
   if (!inherits(object, "gscamm"))
     stop("`object` must be a gscamm fit.")
-  adjust <- match.arg(adjust)
-  use <- match.arg(use)
+  adjust     <- match.arg(adjust)
+  use        <- match.arg(use)
+  var_method <- match.arg(var_method)
   K <- object$K
   if (ref < 1 || ref > K) stop("`ref` out of range.")
 
-  ## response basis for the ALR-WLS regression
+  ## response basis for the ALR-WLS point estimate
   base <- switch(use,
                  theta            = object$Theta,
                  responsibilities = object$R %||% object$Theta)
   Theta <- pmax(base, .Machine$double.eps)
+  ## responsibility basis for the hybrid first-stage residual variance
+  R_base <- pmax(object$R %||% object$Theta, .Machine$double.eps)
 
   ## design matrix for the second-stage regression
   if (!is.null(X_new)) {
@@ -124,13 +137,30 @@ covariate_effects <- function(object,
     bhat[is.na(bhat)] <- 0
     B_alr[, j] <- bhat
 
-    ## sandwich-style WLS variance:
-    ##   Var(beta) = (X' W X)^(-1) X' W diag(e^2) W X (X' W X)^(-1)
-    e <- as.numeric(fit_k$residuals)
     XtWX <- crossprod(D, w * D)
     XtWX_inv <- tryCatch(solve(XtWX), error = function(...) MASS_ginv(XtWX))
-    meat <- crossprod(D, (w^2 * e^2) * D)
-    Vmat <- XtWX_inv %*% meat %*% XtWX_inv
+
+    if (var_method == "hc0") {
+      ## sandwich-style WLS variance:
+      ##   Var(beta) = (X' W X)^(-1) X' W diag(e^2) W X (X' W X)^(-1)
+      e <- as.numeric(fit_k$residuals)
+      meat <- crossprod(D, (w^2 * e^2) * D)
+      Vmat <- XtWX_inv %*% meat %*% XtWX_inv
+    } else {
+      ## hybrid estimator: point estimate from Theta-based WLS (paper
+      ## Section 2.4 accuracy), residual variance from an unweighted
+      ## OLS-on-R-ALR fit so that the first-stage noise is not
+      ## extinguished by the deterministic-link weights. Mirrors the
+      ## noise_sigma calculation used by the bootstrap routine.
+      y_R <- log(R_base[, k] / R_base[, ref])
+      fit_R_ols <- stats::lm.fit(D, y_R)
+      e_R <- as.numeric(fit_R_ols$residuals)
+      df_k <- max(length(e_R) - ncol(D), 1L)
+      sigma2_k <- sum(e_R^2) / df_k
+      DtD_inv <- tryCatch(solve(crossprod(D)),
+                          error = function(...) MASS_ginv(crossprod(D)))
+      Vmat <- sigma2_k * DtD_inv
+    }
     dimnames(Vmat) <- list(cov_names, cov_names)
     vcov_list[[j]] <- Vmat
 

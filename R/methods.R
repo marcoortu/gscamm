@@ -59,13 +59,38 @@ print.summary.gscamm <- function(x, ...) {
   invisible(x)
 }
 
+#' Path coefficients of a GSCA-MM fit
+#'
+#' Under the identifiability constraint of paper Section 2.2 the path
+#' coefficient matrix decomposes as \eqn{B = [B_{-K}, 0]}: only the
+#' non-reference block \eqn{B_{-K} \in R^{P \times (K-1)}} carries
+#' information. By default \code{coef.gscamm} returns this canonical
+#' block. Set \code{augmented = TRUE} to recover the legacy
+#' \eqn{P \times K} matrix with a structurally zero column at the
+#' reference component.
+#'
+#' @param object a \code{gscamm} fit.
+#' @param augmented logical (default \code{FALSE}); if \code{TRUE}
+#'   returns the \eqn{P \times K} augmented form.
+#' @param ... unused.
 #' @export
-coef.gscamm <- function(object, ...) {
-  ## Returns the path coefficients on the standardized covariate scale.
-  rn <- colnames(object$X_std); if (is.null(rn)) rn <- paste0("X", seq_len(object$P))
-  cn <- paste0("comp", seq_len(object$K))
-  dimnames(object$B) <- list(rn, cn)
-  object$B
+coef.gscamm <- function(object, augmented = FALSE, ...) {
+  if (augmented) {
+    rn <- colnames(object$X_std)
+    if (is.null(rn)) rn <- paste0("X", seq_len(object$P))
+    cn <- paste0("comp", seq_len(object$K))
+    dimnames(object$B) <- list(rn, cn)
+    return(object$B)
+  }
+  if (!is.null(object$B_minus)) return(object$B_minus)
+  ## legacy fits without B_minus: derive on the fly
+  ref <- object$gsca_ref %||% object$K
+  rn <- colnames(object$X_std)
+  if (is.null(rn)) rn <- paste0("X", seq_len(object$P))
+  cn <- paste0("comp", setdiff(seq_len(object$K), ref))
+  out <- object$B[, -ref, drop = FALSE]
+  dimnames(out) <- list(rn, cn)
+  out
 }
 
 #' Predict mixture proportions for new observations

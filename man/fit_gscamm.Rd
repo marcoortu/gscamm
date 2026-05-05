@@ -9,8 +9,12 @@ fit_gscamm(
   X,
   K,
   link = c("logistic_normal", "dirichlet", "zero_inflated"),
-  gsca_space = c("simplex", "alr"),
+  gsca_space = c("alr", "simplex"),
   gsca_ref = K,
+  init_phi = c("kmeans", "random"),
+  polish = c("map", "none"),
+  sigma2_polish = 0.25,
+  sigma2_max = 1,
   control = gscamm_control(),
   verbose = FALSE,
   seed = NULL
@@ -30,18 +34,60 @@ proportions; one of \code{"logistic_normal"} (default),
 \code{"dirichlet"}, \code{"zero_inflated"}.}
 
 \item{gsca_space}{geometry in which the GSCA step regresses the
-responsibilities on the covariates. \code{"simplex"} (default,
-matches Equation (8) of the paper) regresses raw responsibilities
-linearly on \code{X}; \code{"alr"} regresses
-\eqn{\log(r_{ik} / r_{i\,\mathrm{ref}})} on \code{X} with a
-user-chosen reference component \code{gsca_ref} (default \code{K}).
-The ALR variant aligns the linear regression with the natural
-geometry of compositional data and substantially reduces the
-structural bias of the path-coefficient estimator, at the cost of
-departing slightly from the original GSCA-MM specification.}
+posterior responsibilities on the covariates. \code{"alr"} (default)
+regresses \eqn{\log(\tilde r_{ik} / \tilde r_{i\,\mathrm{ref}})} on
+\code{X} after a small \eqn{\delta}-regularization of the
+responsibilities; this is the geometrically-coherent update derived
+in Section 2.3 of the paper and is recommended in production.
+\code{"simplex"} regresses the non-reference responsibilities
+directly on \code{X} (the legacy formulation, kept for comparison).
+In both cases the reference column of \eqn{B} is structurally zero
+to enforce identifiability (paper Section 2.2).}
 
 \item{gsca_ref}{integer reference component used when
 \code{gsca_space = "alr"} (default \code{K}).}
+
+\item{init_phi}{initialization strategy for the component-category
+matrix \eqn{\boldsymbol{\Phi}}. \code{"kmeans"} (default) seeds
+\eqn{\boldsymbol{\Phi}} via k-means++ on the row-normalized count
+matrix followed by a few Lloyd iterations on a subsample, which
+reduces local-optima frequency and gives a better recovery of
+\eqn{\mathbf{B}} relative to a Dirichlet random start. \code{"random"}
+restores the legacy Dirichlet random initialization used in earlier
+versions. Explicit \code{control$init_Phi} matrices override this
+argument.}
+
+\item{polish}{post-EM estimator for the unit-level mixture proportions.
+\code{"map"} (default) runs a per-row Newton MAP polish that combines
+the covariate-driven structural mean
+\eqn{\boldsymbol{\mu}_i = X_i^\top \widehat{B}_{-K}} with the
+mixture-of-multinomials likelihood under \eqn{\widehat{\Phi}}, using
+a Gaussian ALR prior with diagonal variance \code{sigma2_polish}.
+The resulting \code{Theta_map} is the apples-to-apples counterpart
+of LDA's \eqn{\gamma} and STM's posterior \eqn{\theta}: it combines
+the covariate-aware prior with the data-informed likelihood, in
+contrast to the structural \code{Theta} (X-only) and the
+token-level posterior \code{R} (data-only, over-peaked).
+\code{"none"} skips the polish; \code{Theta_map} is then \code{NULL}.
+The polish does not affect \eqn{\widehat{B}} or its sandwich variance,
+so coverage of the covariate-effect intervals is preserved.}
+
+\item{sigma2_polish}{prior variance for the MAP polish, in ALR space.
+Either a positive scalar (applied to all non-reference components),
+a length-\eqn{K-1} positive numeric vector (per-component), or the
+string \code{"auto"} to use the data-driven estimate
+\code{fit$sigma2_k} (estimated from ALR residuals of \eqn{R} against
+the structural mean) capped at \code{sigma2_max}. The default
+\code{0.25} is a robust regularization choice across the simulation
+regimes of Section 4 (long, dense and short, sparse documents).
+\code{sigma2_polish} acts as a hyperparameter controlling how much
+the data is allowed to update the structural prior:
+small values pull \eqn{\widehat\eta_i} toward \eqn{X_i^\top \widehat{B}},
+large values toward the multinomial MLE.}
+
+\item{sigma2_max}{upper bound applied when \code{sigma2_polish = "auto"}
+to guard against the high-bias residuals of \eqn{R} in regimes with
+small \eqn{N} or large \eqn{V}; default \code{1.0}. Ignored otherwise.}
 
 \item{control}{list of control parameters; see \code{\link{gscamm_control}}.}
 

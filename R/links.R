@@ -32,7 +32,7 @@ link_logistic_normal <- function(scores) {
 #'   point estimate used in the algorithm is the normalized mean of the
 #'   Dirichlet, i.e. \code{exp(scores)} normalized rowwise; this matches
 #'   the GSCA-MM estimation routine, which works with the conditional mean
-#'   of the topic scores given the covariates.
+#'   of the component scores given the covariates.
 #' @export
 link_dirichlet <- function(scores) {
   if (!is.matrix(scores)) scores <- as.matrix(scores)

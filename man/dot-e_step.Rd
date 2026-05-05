@@ -2,7 +2,7 @@
 % Please edit documentation in R/em_steps.R
 \name{.e_step}
 \alias{.e_step}
-\title{E-step: aggregated document-level responsibilities}
+\title{E-step: aggregated unit-level responsibilities}
 \usage{
 .e_step(W, Theta, Phi)
 }

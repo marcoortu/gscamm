@@ -11,7 +11,8 @@ covariate_effects(
   adjust = c("BH", "holm", "hochberg", "hommel", "bonferroni", "BY", "fdr", "none"),
   standardize = TRUE,
   X_new = NULL,
-  use = c("theta", "responsibilities")
+  use = c("theta", "responsibilities"),
+  var_method = c("hybrid", "hc0")
 )
 }
 \arguments{
@@ -34,15 +35,25 @@ if they are available in \code{object$X_raw}.}
 \item{X_new}{optional alternative design matrix to use instead of the
 one stored in the fit. Must have the same number of rows as the data.}
 
-\item{use}{response basis for the ALR-WLS regression: either
-\code{"theta"} (default; the converged mixture proportions, as
-described in Section 2.4 of the paper) or \code{"responsibilities"}
-(the document-level posterior responsibilities from the final
-E-step). The latter has the practical advantage that residuals
-capture data-driven variability beyond the deterministic link
-transform, which improves plug-in confidence-interval coverage when
-the model link makes \eqn{\boldsymbol{\Theta}} a near-deterministic
-function of the covariates.}
+\item{use}{response basis for the ALR-WLS *point* estimate. Either
+\code{"theta"} (default; the converged mixture proportions, matching
+Section 2.4 of the paper) or \code{"responsibilities"} (the
+unit-level posterior responsibilities from the final E-step). Theta
+is concentrated by the deterministic link and is the canonical
+target of the structural ALR coefficients, so it gives the point
+estimate with smallest bias against the data-generating beta;
+responsibilities give a noisier estimate of similar mean but with
+different variance properties.}
+
+\item{var_method}{estimator for the second-stage variance: either
+\code{"hybrid"} (default) or \code{"hc0"}. The hybrid estimator
+computes \eqn{\hat\sigma_k^2} from R-based residuals
+\eqn{e_i = \log(r_{ik}/r_{i,\mathrm{ref}}) - x_i^\top \hat\beta_k}
+and forms \eqn{V = \hat\sigma_k^2 (D^\top W D)^{-1}}. This is the
+recommended workflow under the deterministic link: Theta yields a
+small-bias point estimate while R supplies the first-stage residual
+variance that is otherwise lost. The HC0 sandwich is retained for
+parity with the original paper.}
 }
 \value{
 an object of class \code{gscamm_effects}, a list with components:

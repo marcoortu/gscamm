@@ -11,11 +11,14 @@ gscamm_control(
   lambda0 = 1,
   rho = 0.9,
   eps = 0.001,
+  delta = 0.01,
   init_Phi = NULL,
   init_B = NULL,
   min_iter = 5,
   trace_perplexity = TRUE,
-  trace_every = 1
+  trace_every = 1,
+  polish_max_iter = 20L,
+  polish_tol = 1e-06
 )
 }
 \arguments{
@@ -37,6 +40,12 @@ schedule \eqn{\lambda_B^{(t)} = \lambda_0 \rho^t} (default 1).}
 \item{eps}{sparsity threshold used by the zero-inflated link
 (default \code{1e-3}).}
 
+\item{delta}{non-negative regularization constant added to the
+responsibilities before the additive log-ratio transform in the
+ALR-space GSCA update (default \code{1e-2}). Required to handle
+rows of \eqn{R} that are sparse or have exact zeros (e.g. under the
+zero-inflated link). Ignored when \code{gsca_space = "simplex"}.}
+
 \item{init_Phi}{optional list with \code{Phi} (\eqn{K \times V}) for
 warm-starting; default initializes from a Dirichlet on the simplex.}
 
@@ -51,6 +60,12 @@ iterations.}
 
 \item{trace_every}{interval at which to record perplexity when
 \code{trace_perplexity = FALSE} (default 5).}
+
+\item{polish_max_iter}{Newton iterations cap for the per-row MAP polish
+(default 20). Only used when \code{fit_gscamm(polish = "map")}.}
+
+\item{polish_tol}{max-absolute-change tolerance on \eqn{\eta} for the
+MAP polish (default \code{1e-6}).}
 }
 \value{
 a list of class \code{gscamm_control}.

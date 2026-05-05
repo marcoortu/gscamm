@@ -1,7 +1,19 @@
 ## ---------------------------------------------------------------------------
-## Main fit function for the GSCA-MM framework. Implements Algorithm 1 of
-## Ortu and Frigau (2026), generalized from topic models to arbitrary
-## mixture-of-multinomials models with unit-level covariates.
+## Main fit function for the GSCA-MM framework (Ortu and Frigau, 2026).
+##
+## Model statement (paper Section 2.2, deterministic formulation):
+##   eta_{ik} = x_i' beta_k          for k = 1, ..., K-1
+##   eta_{iK} = 0                    (structural identifiability constraint)
+##   theta_i  = inverse-ALR(eta_i)   (logistic-normal / softmax with ref)
+##   y_i | theta_i, Phi  ~  Mult(L_i, theta_i' Phi)
+##
+## Estimation (Algorithm 1) maximizes the composite penalized criterion
+##   J(Phi, B) = log L(Phi, B; Y) - lambda_B || B_{-K} ||_F^2
+## by alternating an E-step (posterior responsibilities R), an M-step on
+## Phi (Dirichlet-smoothed multinomial sufficient statistics), and a
+## GSCA step that updates B_{-K} as a ridge-penalized log-ratio
+## projection of R onto the standardized covariate space, with the
+## reference column structurally fixed at zero.
 ## ---------------------------------------------------------------------------
 
 #' Control parameters for the EM-GSCA algorithm
@@ -18,6 +30,11 @@
 #' @param rho ridge decay rate \eqn{\rho \in (0, 1)} (default 0.9).
 #' @param eps sparsity threshold used by the zero-inflated link
 #'   (default \code{1e-3}).
+#' @param delta non-negative regularization constant added to the
+#'   responsibilities before the additive log-ratio transform in the
+#'   ALR-space GSCA update (default \code{1e-2}). Required to handle
+#'   rows of \eqn{R} that are sparse or have exact zeros (e.g. under the
+#'   zero-inflated link). Ignored when \code{gsca_space = "simplex"}.
 #' @param init_Phi optional list with \code{Phi} (\eqn{K \times V}) for
 #'   warm-starting; default initializes from a Dirichlet on the simplex.
 #' @param init_B optional warm-start \eqn{P \times K} matrix; default zero.
@@ -28,6 +45,10 @@
 #'   iterations.
 #' @param trace_every interval at which to record perplexity when
 #'   \code{trace_perplexity = FALSE} (default 5).
+#' @param polish_max_iter Newton iterations cap for the per-row MAP polish
+#'   (default 20). Only used when \code{fit_gscamm(polish = "map")}.
+#' @param polish_tol max-absolute-change tolerance on \eqn{\eta} for the
+#'   MAP polish (default \code{1e-6}).
 #'
 #' @return a list of class \code{gscamm_control}.
 #' @export
@@ -37,20 +58,28 @@ gscamm_control <- function(max_iter = 100,
                            lambda0 = 1,
                            rho = 0.9,
                            eps = 1e-3,
+                           delta = 1e-2,
                            init_Phi = NULL,
                            init_B = NULL,
                            min_iter = 5,
                            trace_perplexity = TRUE,
-                           trace_every = 1) {
+                           trace_every = 1,
+                           polish_max_iter = 20L,
+                           polish_tol = 1e-6) {
   stopifnot(max_iter >= 1, tol >= 0, alpha >= 0,
             lambda0 >= 0, rho > 0, rho < 1, eps > 0,
-            min_iter >= 1, trace_every >= 1)
+            delta >= 0,
+            min_iter >= 1, trace_every >= 1,
+            polish_max_iter >= 1, polish_tol > 0)
   structure(list(max_iter = max_iter, tol = tol, alpha = alpha,
                  lambda0 = lambda0, rho = rho, eps = eps,
+                 delta = delta,
                  init_Phi = init_Phi, init_B = init_B,
                  min_iter = min_iter,
                  trace_perplexity = trace_perplexity,
-                 trace_every = trace_every),
+                 trace_every = trace_every,
+                 polish_max_iter = as.integer(polish_max_iter),
+                 polish_tol = polish_tol),
             class = "gscamm_control")
 }
 
@@ -76,17 +105,55 @@ gscamm_control <- function(max_iter = 100,
 #'   proportions; one of \code{"logistic_normal"} (default),
 #'   \code{"dirichlet"}, \code{"zero_inflated"}.
 #' @param gsca_space geometry in which the GSCA step regresses the
-#'   responsibilities on the covariates. \code{"simplex"} (default,
-#'   matches Equation (8) of the paper) regresses raw responsibilities
-#'   linearly on \code{X}; \code{"alr"} regresses
-#'   \eqn{\log(r_{ik} / r_{i\,\mathrm{ref}})} on \code{X} with a
-#'   user-chosen reference component \code{gsca_ref} (default \code{K}).
-#'   The ALR variant aligns the linear regression with the natural
-#'   geometry of compositional data and substantially reduces the
-#'   structural bias of the path-coefficient estimator, at the cost of
-#'   departing slightly from the original GSCA-MM specification.
+#'   posterior responsibilities on the covariates. \code{"alr"} (default)
+#'   regresses \eqn{\log(\tilde r_{ik} / \tilde r_{i\,\mathrm{ref}})} on
+#'   \code{X} after a small \eqn{\delta}-regularization of the
+#'   responsibilities; this is the geometrically-coherent update derived
+#'   in Section 2.3 of the paper and is recommended in production.
+#'   \code{"simplex"} regresses the non-reference responsibilities
+#'   directly on \code{X} (the legacy formulation, kept for comparison).
+#'   In both cases the reference column of \eqn{B} is structurally zero
+#'   to enforce identifiability (paper Section 2.2).
 #' @param gsca_ref integer reference component used when
 #'   \code{gsca_space = "alr"} (default \code{K}).
+#' @param init_phi initialization strategy for the component-category
+#'   matrix \eqn{\boldsymbol{\Phi}}. \code{"kmeans"} (default) seeds
+#'   \eqn{\boldsymbol{\Phi}} via k-means++ on the row-normalized count
+#'   matrix followed by a few Lloyd iterations on a subsample, which
+#'   reduces local-optima frequency and gives a better recovery of
+#'   \eqn{\mathbf{B}} relative to a Dirichlet random start. \code{"random"}
+#'   restores the legacy Dirichlet random initialization used in earlier
+#'   versions. Explicit \code{control$init_Phi} matrices override this
+#'   argument.
+#' @param polish post-EM estimator for the unit-level mixture proportions.
+#'   \code{"map"} (default) runs a per-row Newton MAP polish that combines
+#'   the covariate-driven structural mean
+#'   \eqn{\boldsymbol{\mu}_i = X_i^\top \widehat{B}_{-K}} with the
+#'   mixture-of-multinomials likelihood under \eqn{\widehat{\Phi}}, using
+#'   a Gaussian ALR prior with diagonal variance \code{sigma2_polish}.
+#'   The resulting \code{Theta_map} is the apples-to-apples counterpart
+#'   of LDA's \eqn{\gamma} and STM's posterior \eqn{\theta}: it combines
+#'   the covariate-aware prior with the data-informed likelihood, in
+#'   contrast to the structural \code{Theta} (X-only) and the
+#'   token-level posterior \code{R} (data-only, over-peaked).
+#'   \code{"none"} skips the polish; \code{Theta_map} is then \code{NULL}.
+#'   The polish does not affect \eqn{\widehat{B}} or its sandwich variance,
+#'   so coverage of the covariate-effect intervals is preserved.
+#' @param sigma2_polish prior variance for the MAP polish, in ALR space.
+#'   Either a positive scalar (applied to all non-reference components),
+#'   a length-\eqn{K-1} positive numeric vector (per-component), or the
+#'   string \code{"auto"} to use the data-driven estimate
+#'   \code{fit$sigma2_k} (estimated from ALR residuals of \eqn{R} against
+#'   the structural mean) capped at \code{sigma2_max}. The default
+#'   \code{0.25} is a robust regularization choice across the simulation
+#'   regimes of Section 4 (long, dense and short, sparse documents).
+#'   \code{sigma2_polish} acts as a hyperparameter controlling how much
+#'   the data is allowed to update the structural prior:
+#'   small values pull \eqn{\widehat\eta_i} toward \eqn{X_i^\top \widehat{B}},
+#'   large values toward the multinomial MLE.
+#' @param sigma2_max upper bound applied when \code{sigma2_polish = "auto"}
+#'   to guard against the high-bias residuals of \eqn{R} in regimes with
+#'   small \eqn{N} or large \eqn{V}; default \code{1.0}. Ignored otherwise.
 #' @param control list of control parameters; see \code{\link{gscamm_control}}.
 #' @param verbose logical, print per-iteration progress.
 #' @param seed optional integer for reproducible initialization.
@@ -118,14 +185,27 @@ gscamm_control <- function(max_iter = 100,
 fit_gscamm <- function(W, X, K,
                        link = c("logistic_normal", "dirichlet",
                                 "zero_inflated"),
-                       gsca_space = c("simplex", "alr"),
+                       gsca_space = c("alr", "simplex"),
                        gsca_ref = K,
+                       init_phi = c("kmeans", "random"),
+                       polish = c("map", "none"),
+                       sigma2_polish = 0.25,
+                       sigma2_max = 1.0,
                        control = gscamm_control(),
                        verbose = FALSE,
                        seed = NULL) {
   link <- match.arg(link)
   gsca_space <- match.arg(gsca_space)
+  init_phi <- match.arg(init_phi)
+  polish <- match.arg(polish)
   if (gsca_ref < 1 || gsca_ref > K) stop("gsca_ref out of range.")
+  if (!(is.numeric(sigma2_polish) ||
+        identical(sigma2_polish, "auto")))
+    stop("sigma2_polish must be a positive scalar/vector or \"auto\".")
+  if (is.numeric(sigma2_polish) && any(sigma2_polish <= 0))
+    stop("sigma2_polish entries must be positive.")
+  if (!is.numeric(sigma2_max) || length(sigma2_max) != 1L || sigma2_max <= 0)
+    stop("sigma2_max must be a positive scalar.")
   if (!inherits(control, "gscamm_control"))
     control <- do.call(gscamm_control, as.list(control))
   if (!is.null(seed)) set.seed(seed)
@@ -150,6 +230,8 @@ fit_gscamm <- function(W, X, K,
     Phi <- as.matrix(control$init_Phi)
     if (!identical(dim(Phi), c(K, V)))
       stop("init_Phi must have dimension K x V.")
+  } else if (init_phi == "kmeans") {
+    Phi <- .init_phi_kmeans(W, K)
   } else {
     ## random Dirichlet(0.1) rows
     Phi <- matrix(stats::rgamma(K * V, 0.1, 1), K, V)
@@ -164,7 +246,7 @@ fit_gscamm <- function(W, X, K,
   } else {
     B <- matrix(0, P, K)
   }
-  ## small random topic scores to break symmetry
+  ## small random component scores to break symmetry
   scores0 <- X_std %*% B + matrix(stats::rnorm(N * K, sd = 0.1), N, K)
   Theta <- .apply_link(scores0, link, eps = control$eps)
   Gamma <- cbind(X_std, scores0)
@@ -185,13 +267,15 @@ fit_gscamm <- function(W, X, K,
     ## M-step (Phi)
     Phi_new <- .m_step_phi(W, R, alpha = control$alpha)
 
-    ## GSCA step (B): simplex- or ALR-space ridge
+    ## GSCA step (B): ALR- or simplex-space ridge update
     lambda_t <- .lambda_schedule(t - 1L, control$lambda0, control$rho)
-    B_new <- if (gsca_space == "simplex")
-      .gsca_update_B(X_std, R, lambda_B = lambda_t, XtX = XtX)
-    else
+    B_new <- if (gsca_space == "alr")
       .gsca_update_B_alr(X_std, R, lambda_B = lambda_t,
-                         ref = gsca_ref, XtX = XtX)
+                         ref = gsca_ref,
+                         delta = control$delta, XtX = XtX)
+    else
+      .gsca_update_B(X_std, R, lambda_B = lambda_t,
+                     ref = gsca_ref, XtX = XtX)
 
     ## update Gamma and Theta from new scores
     scores_new <- X_std %*% B_new
@@ -235,17 +319,80 @@ fit_gscamm <- function(W, X, K,
   ## for the second-stage ALR-WLS regression (see covariate_effects()).
   R_final <- .e_step(W, Theta, Phi)
 
+  ## non-reference block of B (canonical estimand under the
+  ## identifiability constraint B = [B_{-K}, 0], paper Section 2.2)
+  B_minus <- B[, -gsca_ref, drop = FALSE]
+  rn_X <- colnames(X_std)
+  if (is.null(rn_X)) rn_X <- paste0("X", seq_len(P))
+  cn_nr <- paste0("comp", setdiff(seq_len(K), gsca_ref))
+  dimnames(B_minus) <- list(rn_X, cn_nr)
+
+  ## --- diagnostic sigma2_k from ALR residuals of R ------------------------
+  ## Exposed for downstream signal/noise diagnostics. Note that this
+  ## estimator can over-state sigma^2 in regimes where rmse_B is non-
+  ## negligible (var(X (B-beta)) leaks into the residual variance), and
+  ## should NOT be used as the polish prior variance directly without a
+  ## cap. Use sigma2_polish to control the polish.
+  sigma2_k <- .estimate_sigma2_alr(R_final, X_std, B_minus,
+                                   ref = gsca_ref,
+                                   delta = control$delta,
+                                   P_eff = P)
+  names(sigma2_k) <- cn_nr
+
+  ## --- MAP polish ---------------------------------------------------------
+  ## See R/map_polish.R. Updates Theta_map = inverse-ALR(eta_map) where
+  ## eta_map_i combines mu_i = X_i' B_{-K} with the multinomial likelihood
+  ## under (Phi, sigma2_used). Does NOT update B or its variance:
+  ## covariate effects and their CIs are unchanged.
+  if (polish == "map") {
+    mu_alr <- X_std %*% B_minus
+
+    ## resolve sigma2 used by the polish
+    if (identical(sigma2_polish, "auto")) {
+      sigma2_used <- pmin(sigma2_k, sigma2_max)
+    } else if (length(sigma2_polish) == 1L) {
+      sigma2_used <- rep(as.numeric(sigma2_polish), K - 1L)
+    } else {
+      if (length(sigma2_polish) != K - 1L)
+        stop("sigma2_polish must have length 1 or K-1.")
+      sigma2_used <- as.numeric(sigma2_polish)
+    }
+    names(sigma2_used) <- cn_nr
+
+    pol <- .eta_map_polish(W, Phi, mu = mu_alr,
+                           sigma2 = sigma2_used, ref = gsca_ref,
+                           max_iter = control$polish_max_iter,
+                           tol = control$polish_tol)
+    Theta_map <- pol$Theta
+    eta_map <- pol$eta
+    polish_info <- list(method = "map",
+                        sigma2_used = sigma2_used,
+                        converged = pol$converged,
+                        iters = pol$iters,
+                        n_converged = sum(pol$converged))
+  } else {
+    Theta_map <- NULL
+    eta_map <- NULL
+    sigma2_used <- NULL
+    polish_info <- list(method = "none")
+  }
+
   fit <- list(
-    Phi = Phi, Theta = Theta, R = R_final, B = B, Gamma = Gamma,
+    Phi = Phi, Theta = Theta, R = R_final,
+    Theta_map = Theta_map, eta_map = eta_map,
+    sigma2_k = sigma2_k, sigma2_polish = sigma2_used,
+    B = B, B_minus = B_minus, Gamma = Gamma,
     X_std = X_std, X = X, W = W,
     link = link, gsca_space = gsca_space, gsca_ref = gsca_ref,
+    init_phi = init_phi, polish = polish,
     K = K, P = P, V = V, N = N,
     convergence = list(
       iterations = iter_done,
       converged = converged,
       perplexity = hist_perp,
       d_change = hist_dchange,
-      lambda_B = hist_lambda
+      lambda_B = hist_lambda,
+      polish = polish_info
     ),
     control = control,
     call = match.call()
