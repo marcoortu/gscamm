@@ -34,7 +34,7 @@ present_methods <- intersect(
 method_labels <- c(gscamm       = "GSCA-MM\n(plug-in)",
                    gscamm_boot  = "GSCA-MM\n(boot+noise)",
                    lda          = "LDA+ALR",
-                   stm          = "STM\n(Random init)",
+                   stm          = "STM",
                    stm_spectral = "STM\n(Spectral, warm)")
 R$method   <- factor(R$method, levels = present_methods,
                      labels = method_labels[present_methods])
@@ -48,7 +48,7 @@ R$scenario <- factor(R$scenario,
 PALETTE <- c("GSCA-MM\n(plug-in)"     = "#60A5FA",
              "GSCA-MM\n(boot+noise)"  = "#1E3A8A",
              "LDA+ALR"                = "#10B981",
-             "STM\n(Random init)"     = "#EF4444",
+             "STM"                    = "#EF4444",
              "STM\n(Spectral, warm)"  = "#FCA5A5")
 
 draw_box <- function(varname, title, ylab,
@@ -65,8 +65,8 @@ draw_box <- function(varname, title, ylab,
   d$method   <- droplevels(d$method)
   d$scenario <- droplevels(d$scenario)
 
-  png(file, width = 1200, height = 780, res = 130)
-  op <- par(mar = c(7.5, 4.6, 5.0, 1.5), las = 2, xpd = FALSE)
+  png(file, width = 1200, height = 900, res = 130)
+  op <- par(mar = c(9.0, 4.6, 5.0, 1.5), xpd = FALSE)
   on.exit({ par(op); dev.off() })
 
   d$grp <- interaction(d$scenario, d$method, drop = TRUE, sep = " | ")
@@ -75,10 +75,19 @@ draw_box <- function(varname, title, ylab,
   cols <- rep(pal_used, each = nlevels(d$scenario))
 
   log_arg <- if (log_y) "y" else ""
-  ## title is drawn separately so we can leave room for an out-of-plot legend
+  ## suppress default x-axis labels; we draw them at 45 degrees below
   boxplot(vals, main = "", ylab = ylab, col = cols, log = log_arg,
-          outline = FALSE, las = 2, cex.axis = 0.78)
+          outline = FALSE, xaxt = "n", las = 1, cex.axis = 0.85)
   if (!is.null(ref_line)) abline(h = ref_line, col = "darkred", lty = 2)
+
+  ## 45-degree rotated x-axis labels (flatten internal newlines)
+  x_labels <- gsub("\n", " ", names(vals))
+  axis(1, at = seq_along(vals), labels = FALSE, tick = TRUE)
+  usr <- par("usr")
+  y_pos <- if (log_y) 10^(usr[3] - 0.04 * (usr[4] - usr[3])) else
+                       usr[3] - 0.03 * (usr[4] - usr[3])
+  text(x = seq_along(vals), y = y_pos, labels = x_labels,
+       srt = 45, adj = c(1, 1), xpd = TRUE, cex = 0.78)
 
   ## title and legend both placed in the (enlarged) top margin so they do
   ## not occlude any boxplot
@@ -93,8 +102,8 @@ draw_box <- function(varname, title, ylab,
 draw_box("rmse_theta", expression(RMSE[theta]*" (structural / posterior)"),
          expression(RMSE[theta]), drop_boot = TRUE)
 draw_box("rmse_theta_map",
-         expression(RMSE[theta]*" (MAP / posterior; apples-to-apples)"),
-         expression(RMSE[theta]^MAP), drop_boot = TRUE)
+         expression(RMSE[theta]),
+         expression(RMSE[theta]), drop_boot = TRUE)
 draw_box("rmse_B",     expression(RMSE[B]),
          expression(RMSE[B]))
 draw_box("coverage_B", expression("Coverage of 95% CI for "*B),
