@@ -191,20 +191,21 @@ bootstrap_covariate_effects <- function(fit,
   q_hat     <- q_hat / pmax(rowSums(q_hat), .Machine$double.xmin)
   L_obs     <- as.integer(round(rowSums(W)))
 
-  ## Warm-started control for parametric refits.
+  ## Refit control: NO warm-start at Phi or B.
   ##
-  ## Design choice: warm-start ONLY at Phi_hat (the K*V matrix that
-  ## dominates EM convergence cost), and let B re-estimate from zero
-  ## each replicate. Warm-starting B too produces near-zero replicate-
-  ## to-replicate variability of B^(b) -- the refit barely moves -- which
-  ## understates the bootstrap CI. Re-estimating B from zero takes only a
-  ## few EM iterations once Phi is already at its converged value, so the
-  ## cost of dropping the B warm-start is small but the variance recovery
-  ## is essential for nominal coverage.
-  control_warm <- control
-  control_warm$init_Phi <- fit$Phi
-  control_warm$init_B   <- NULL
-  control_warm$max_iter <- min(control$max_iter, 50L)
+  ## Validation pilot (2026-05-05) showed that warm-starting Phi at the
+  ## fitted value collapses the bootstrap variance: with Phi pinned and W^(b)
+  ## close to W, the M-step barely moves Phi, so B^(b) lands within ~3% of
+  ## B_hat and the resulting CIs are 5-20x too narrow (coverage ~0.17,
+  ## target 0.95). Each parametric refit must therefore go through the
+  ## full EM with k-means++ initialization on W^(b) to reflect the true
+  ## first-stage uncertainty. The cost overhead is modest because gscamm
+  ## EM converges in O(50) iterations even from cold init when W^(b) is
+  ## drawn from the fitted multinomial.
+  control_boot <- control
+  control_boot$init_Phi <- NULL
+  control_boot$init_B   <- NULL
+  control_boot$max_iter <- min(control$max_iter, 80L)
 
   ## one-shot worker
   one_boot <- function(b) {
@@ -228,7 +229,9 @@ bootstrap_covariate_effects <- function(fit,
       Xb <- X[idx, , drop = FALSE]
     }
 
-    ctrl_b <- if (method == "parametric") control_warm else control
+    ctrl_b <- if (method == "parametric") control_boot else control
+    ## (parametric: cold init for full first-stage uncertainty; see
+    ## comment above the control_boot construction)
     fitb <- tryCatch(
       fit_gscamm(Wb, Xb, K = K, link = link,
                  gsca_space = fit$gsca_space %||% "alr",
@@ -286,7 +289,7 @@ bootstrap_covariate_effects <- function(fit,
       parallel::clusterEvalQ(cl, library(gscamm))
       parallel::clusterExport(cl,
         varlist = c("W", "X", "N", "K", "P", "link", "control",
-                    "control_warm", "fit", "ref", "level", "one_boot",
+                    "control_boot", "fit", "ref", "level", "one_boot",
                     "method", "use", "noise_sigma",
                     "Theta_hat", "Phi_hat", "B_hat", "q_hat", "L_obs"),
         envir = environment())
