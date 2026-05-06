@@ -1,4 +1,4 @@
-# GSCA--MM
+# GSCA-MM
 
 **Generalized Structured Component Analysis for Mixture-of-Multinomials Models**
 
@@ -9,13 +9,13 @@
 
 ## About the article
 
-The paper introduces **GSCA--MM**, a structured component regression framework
-for mixture-of-multinomials data with unit-level covariates. GSCA--MM
+The paper introduces **GSCA-MM**, a structured component regression framework
+for mixture-of-multinomials data with unit-level covariates. GSCA-MM
 generalizes the GSCA-TM topic model to arbitrary mixture-of-multinomials
 applications such as microbiome composition analysis, market basket studies,
 and topic modeling.
 
-In the GSCA--MM model, covariate effects on the latent mixture weights are
+In the GSCA-MM model, covariate effects on the latent mixture weights are
 encoded through a **path coefficient matrix** within a generalized structured
 component analysis formulation. Estimation alternates:
 
@@ -32,7 +32,7 @@ estimation. Post-estimation inference on covariate effects is provided through
 non-parametric bootstrap variant (Remark 2) recommended for confidence
 intervals.
 
-The paper (Section 4) compares GSCA--MM against LDA + ALR-WLS and the
+The paper (Section 4) compares GSCA-MM against LDA + ALR-WLS and the
 Structural Topic Model (STM) on a Monte Carlo design with three scenarios
 (`baseline`, `high_covariate`, `high_sparsity`), reporting RMSE, coverage,
 interval width, and perplexity. Section 5 illustrates the framework on a
@@ -138,7 +138,7 @@ Rscript replication_package/simulations/code/04_make_figures.R
 
 | Label          | Algorithm                                                     | Inference                       |
 |----------------|---------------------------------------------------------------|---------------------------------|
-| `gscamm`       | GSCA--MM, ALR-space log-ratio projection GSCA step (default)   | plug-in ALR-WLS                 |
+| `gscamm`       | GSCA-MM, ALR-space log-ratio projection GSCA step (default)   | plug-in ALR-WLS                 |
 | `gscamm_boot`  | Same fit + non-parametric row bootstrap                       | basic CI + noise augmentation   |
 | `lda`          | `topicmodels::LDA` (Variational EM)                           | plug-in ALR-WLS                 |
 | `stm`          | `stm::stm` with prevalence formula (`init.type = "Random"`)   | plug-in ALR-WLS                 |
