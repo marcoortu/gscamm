@@ -1,0 +1,34 @@
+[2026-05-06 09:10:05] Reading raw CSV: C:\Users\Utente\OneDrive - Università\OneDrive - Università di Cagliari\UNIVERSITA\workspace\R\gscamm\replication_package\real_world_application\old_gscatm\usa_election_speeches_2024.csv
+[2026-05-06 09:10:05]   raw rows: 995
+[2026-05-06 09:10:05]   rows after covariate validation: 995
+[2026-05-06 09:10:05] Pre-cleaning text and tokenizing (this can take a moment)...
+[2026-05-06 09:10:10]   total tokens after lemmatization: 595954  unique types: 17503
+[2026-05-06 09:10:10] Detecting significant bigrams (min_count=20, lambda>=3, top 50)...
+[2026-05-06 09:10:11]   bigrams compounded: 50
+[2026-05-06 09:10:11]   top 15 bigrams kept (collocation / count / lambda):
+[2026-05-06 09:10:11]     notre dame                         37  17.21
+[2026-05-06 09:10:11]     los angeles                        27  16.90
+[2026-05-06 09:10:11]     ruth bader                         24  16.78
+[2026-05-06 09:10:11]     las vega                           20  16.60
+[2026-05-06 09:10:11]     puerto rico                        27  16.05
+[2026-05-06 09:10:11]     hong kong                          66  15.94
+[2026-05-06 09:10:11]     magic wand                         36  15.57
+[2026-05-06 09:10:11]     mazie hirono                       24  15.48
+[2026-05-06 09:10:11]     saudi arabia                       50  15.11
+[2026-05-06 09:10:11]     witch hunt                         30  14.73
+[2026-05-06 09:10:11]     substantive procedural             56  14.21
+[2026-05-06 09:10:11]     martin luther                      23  14.03
+[2026-05-06 09:10:11]     bader ginsburg                     24  14.03
+[2026-05-06 09:10:11]     procedural enforceable             56  13.94
+[2026-05-06 09:10:11]     kim jong                           43  13.63
+[2026-05-06 09:10:11] Building DFM (min_termfreq=20, min_docfreq=1%, max_docfreq=60%)...
+[2026-05-06 09:10:11]   DFM shape: 995 docs x 3293 types
+[2026-05-06 09:10:11]   total non-zero entries: 227911
+[2026-05-06 09:10:11]   doc length (post-trim) summary:
+[2026-05-06 09:10:11]        Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+[2026-05-06 09:10:11]        20.0    92.0   210.0   503.2   699.0  3098.0 
+[2026-05-06 09:10:11]   dropping 278 docs with < 100 post-trim tokens (keep 717)
+[2026-05-06 09:10:11]   final DFM shape: 717 docs x 3293 types
+[2026-05-06 09:10:11]   covariate matrix: 717 x 4  cols: year2020, year2021, partydemocratic, candidate_typevice_president
+[2026-05-06 09:10:12] Preprocessing complete in 6.9 s
+[2026-05-06 09:10:12] Artifacts written to: C:\Users\Utente\OneDrive - Università\OneDrive - Università di Cagliari\UNIVERSITA\workspace\R\gscamm\replication_package\real_world_application/data
