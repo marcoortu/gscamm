@@ -16,10 +16,11 @@ Description: Implementation of the GSCA-MM framework, a structured component
     modeling. Covariate effects on mixture weights are represented through
     a path coefficient matrix within a generalized structured component
     analysis formulation. Estimation alternates EM updates for the component
-    distributions with a ridge-penalized regression step for the path
-    coefficients, decoupling latent structure recovery from structural
-    parameter estimation. Post-estimation inference on covariate effects is
-    available via additive log-ratio weighted least squares.
+    distributions with a ridge-penalized log-ratio projection of posterior
+    responsibilities onto the covariate space, decoupling latent structure
+    recovery from structural parameter estimation. Post-estimation inference
+    on covariate effects is available via additive log-ratio weighted least
+    squares.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

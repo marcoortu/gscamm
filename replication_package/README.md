@@ -37,12 +37,13 @@ GSCA-MM path coefficients (Remark 2).
 
 ## Methods compared
 
-| Label              | Description                                                          |
-|--------------------|----------------------------------------------------------------------|
-| `gscamm`           | GSCA-MM with simplex-space GSCA step (paper default), plug-in WLS    |
-| `gscamm_boot`      | GSCA-MM with noise-augmented basic-bootstrap CIs (recommended)       |
-| `lda_alr`          | Latent Dirichlet Allocation followed by ALR-WLS regression           |
-| `stm`              | Structural Topic Model with prevalence formula                       |
+| Label              | Description                                                                          |
+|--------------------|--------------------------------------------------------------------------------------|
+| `gscamm`           | GSCA-MM with ridge-penalized log-ratio projection of posterior responsibilities      |
+|                    | onto the covariate space (ALR coordinates; paper default), plug-in WLS               |
+| `gscamm_boot`      | GSCA-MM with noise-augmented basic-bootstrap CIs (recommended)                       |
+| `lda_alr`          | Latent Dirichlet Allocation followed by ALR-WLS regression                           |
+| `stm`              | Structural Topic Model with prevalence formula (`init.type = "Random"`)              |
 
 The `gscamm_boot` row reports identical point estimates to `gscamm`
 (after first-order bootstrap bias correction the point may shift

@@ -21,8 +21,10 @@ component analysis formulation. Estimation alternates:
 
 1. **EM updates** for the component-category distributions (Phi) and the
    observation-component weights (Theta);
-2. A **ridge-penalized GSCA step** for the path coefficients (B), performed in
-   simplex space.
+2. A **ridge-penalized log-ratio projection** of the posterior
+   responsibilities onto the covariate space, performed in ALR coordinates
+   (the GSCA step), with a structural zero on the reference component to
+   enforce identifiability of the path coefficients (B).
 
 This decouples latent structure recovery from structural parameter
 estimation. Post-estimation inference on covariate effects is provided through
@@ -136,10 +138,10 @@ Rscript replication_package/simulations/code/04_make_figures.R
 
 | Label          | Algorithm                                                     | Inference                       |
 |----------------|---------------------------------------------------------------|---------------------------------|
-| `gscamm`       | GSCA-MM, simplex-space GSCA step (paper default)              | plug-in ALR-WLS                 |
+| `gscamm`       | GSCA-MM, ALR-space log-ratio projection GSCA step (default)   | plug-in ALR-WLS                 |
 | `gscamm_boot`  | Same fit + non-parametric row bootstrap                       | basic CI + noise augmentation   |
 | `lda`          | `topicmodels::LDA` (Variational EM)                           | plug-in ALR-WLS                 |
-| `stm`          | `stm::stm` with prevalence formula on all covariates          | plug-in ALR-WLS                 |
+| `stm`          | `stm::stm` with prevalence formula (`init.type = "Random"`)   | plug-in ALR-WLS                 |
 
 ## Citation
 
