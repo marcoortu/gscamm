@@ -25,14 +25,19 @@ R <- readRDS(infile)
 ## back-compat: rmse_theta_map missing in older RDS files
 if (!"rmse_theta_map" %in% names(R)) R$rmse_theta_map <- R$rmse_theta
 
+## Drop gscamm_boot rows globally: the figures present GSCA-MM as a single
+## method (the plug-in fit). The bootstrap row's RMSE/perplexity values are
+## identical to the plug-in (it inherits Theta/Phi), and its coverage/width
+## differences live in the table only.
+R <- R[as.character(R$method) != "gscamm_boot", , drop = FALSE]
+
 ## detect available methods (stm_spectral is opt-in counter-factual;
 ## STM means Random init by default in this replication package)
 present_methods <- intersect(
-  c("gscamm", "gscamm_boot", "lda", "stm", "stm_spectral"),
+  c("gscamm", "lda", "stm", "stm_spectral"),
   unique(as.character(R$method))
 )
-method_labels <- c(gscamm       = "GSCA-MM\n(plug-in)",
-                   gscamm_boot  = "GSCA-MM\n(boot+noise)",
+method_labels <- c(gscamm       = "GSCA-MM",
                    lda          = "LDA+ALR",
                    stm          = "STM",
                    stm_spectral = "STM\n(Spectral, warm)")
@@ -41,27 +46,18 @@ R$method   <- factor(R$method, levels = present_methods,
 R$scenario <- factor(R$scenario,
                      levels = c("baseline", "high_covariate", "high_sparsity"))
 
-## High-contrast palette: the two GSCA-MM variants use distinct hues
-## (light blue / deep navy); STM (Random) is the default canonical method
-## in deep red, with the optional Spectral warm-start variant in light red
-## so the warm-start contribution is immediately visible.
-PALETTE <- c("GSCA-MM\n(plug-in)"     = "#60A5FA",
-             "GSCA-MM\n(boot+noise)"  = "#1E3A8A",
+## High-contrast palette: GSCA-MM in deep navy; STM (Random) in deep red
+## with the optional Spectral warm-start variant in light red so the
+## warm-start contribution is immediately visible.
+PALETTE <- c("GSCA-MM"                = "#1E3A8A",
              "LDA+ALR"                = "#10B981",
              "STM"                    = "#EF4444",
              "STM\n(Spectral, warm)"  = "#FCA5A5")
 
 draw_box <- function(varname, title, ylab,
-                     ref_line = NULL, file = NULL, log_y = FALSE,
-                     drop_boot = FALSE) {
+                     ref_line = NULL, file = NULL, log_y = FALSE) {
   if (is.null(file)) file <- file.path(FIGURE_DIR, paste0(varname, ".png"))
   d <- R
-  ## For metrics where the bootstrap wrapper inherits the plug-in fit's
-  ## Theta and Phi (rmse_theta, rmse_phi, perplexity), the boot row is a
-  ## duplicate of the plug-in row. Drop it so the boxes don't overlap.
-  if (drop_boot) {
-    d <- d[d$method != "GSCA-MM\n(boot+noise)", , drop = FALSE]
-  }
   d$method   <- droplevels(d$method)
   d$scenario <- droplevels(d$scenario)
 
@@ -100,16 +96,16 @@ draw_box <- function(varname, title, ylab,
 }
 
 draw_box("rmse_theta", expression(RMSE[theta]*" (structural / posterior)"),
-         expression(RMSE[theta]), drop_boot = TRUE)
+         expression(RMSE[theta]))
 draw_box("rmse_theta_map",
          expression(RMSE[theta]),
-         expression(RMSE[theta]), drop_boot = TRUE)
+         expression(RMSE[theta]))
 draw_box("rmse_B",     expression(RMSE[B]),
          expression(RMSE[B]))
 draw_box("coverage_B", expression("Coverage of 95% CI for "*B),
          "empirical coverage", ref_line = 0.95)
 draw_box("perplexity", "Held-in perplexity", "perplexity",
-         log_y = TRUE, drop_boot = TRUE)
+         log_y = TRUE)
 draw_box("time",       "Per-replicate runtime", "seconds (log)", log_y = TRUE)
 
 cat("Figures saved to:\n")
