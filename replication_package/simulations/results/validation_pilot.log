@@ -1,127 +1,127 @@
-[2026-05-05 17:36:22] === Validation pilot for parametric bootstrap ===
-[2026-05-05 17:36:22]   R = 30 replicates per scenario
-[2026-05-05 17:36:22]   B = 200 (parametric)  B = 200 (legacy noise-aug)
-[2026-05-05 17:36:22]   scenarios = baseline, high_covariate, high_sparsity
-[2026-05-05 17:36:22]   cores = 95 (OS: unix)
-[2026-05-05 17:36:22] ========== scenario: baseline [R=30, 95 cores] ==========
-[2026-05-05 17:44:17]   baseline rep   1/30   431.7s  | total:   7.9 min  [  1.1%]
-[2026-05-05 17:44:17]   baseline rep   2/30   409.1s  | total:   7.9 min  [  2.2%]
-[2026-05-05 17:44:17]   baseline rep   3/30   412.9s  | total:   7.9 min  [  3.3%]
-[2026-05-05 17:44:17]   baseline rep   4/30   445.9s  | total:   7.9 min  [  4.4%]
-[2026-05-05 17:44:17]   baseline rep   5/30   433.0s  | total:   7.9 min  [  5.6%]
-[2026-05-05 17:44:17]   baseline rep   6/30   414.5s  | total:   7.9 min  [  6.7%]
-[2026-05-05 17:44:17]   baseline rep   7/30   432.6s  | total:   7.9 min  [  7.8%]
-[2026-05-05 17:44:17]   baseline rep   8/30   419.5s  | total:   7.9 min  [  8.9%]
-[2026-05-05 17:44:17]   baseline rep   9/30   423.4s  | total:   7.9 min  [ 10.0%]
-[2026-05-05 17:44:17]   baseline rep  10/30   475.4s  | total:   7.9 min  [ 11.1%]
-[2026-05-05 17:44:17]   baseline rep  11/30   446.7s  | total:   7.9 min  [ 12.2%]
-[2026-05-05 17:44:17]   baseline rep  12/30   415.8s  | total:   7.9 min  [ 13.3%]
-[2026-05-05 17:44:17]   baseline rep  13/30   431.7s  | total:   7.9 min  [ 14.4%]
-[2026-05-05 17:44:17]   baseline rep  14/30   427.9s  | total:   7.9 min  [ 15.6%]
-[2026-05-05 17:44:17]   baseline rep  15/30   421.0s  | total:   7.9 min  [ 16.7%]
-[2026-05-05 17:44:17]   baseline rep  16/30   463.7s  | total:   7.9 min  [ 17.8%]
-[2026-05-05 17:44:17]   baseline rep  17/30   424.1s  | total:   7.9 min  [ 18.9%]
-[2026-05-05 17:44:17]   baseline rep  18/30   433.9s  | total:   7.9 min  [ 20.0%]
-[2026-05-05 17:44:17]   baseline rep  19/30   441.9s  | total:   7.9 min  [ 21.1%]
-[2026-05-05 17:44:17]   baseline rep  20/30   419.5s  | total:   7.9 min  [ 22.2%]
-[2026-05-05 17:44:17]   baseline rep  21/30   423.3s  | total:   7.9 min  [ 23.3%]
-[2026-05-05 17:44:17]   baseline rep  22/30   430.4s  | total:   7.9 min  [ 24.4%]
-[2026-05-05 17:44:17]   baseline rep  23/30   430.2s  | total:   7.9 min  [ 25.6%]
-[2026-05-05 17:44:17]   baseline rep  24/30   446.5s  | total:   7.9 min  [ 26.7%]
-[2026-05-05 17:44:17]   baseline rep  25/30   454.1s  | total:   7.9 min  [ 27.8%]
-[2026-05-05 17:44:17]   baseline rep  26/30   424.0s  | total:   7.9 min  [ 28.9%]
-[2026-05-05 17:44:17]   baseline rep  27/30   427.4s  | total:   7.9 min  [ 30.0%]
-[2026-05-05 17:44:17]   baseline rep  28/30   414.9s  | total:   7.9 min  [ 31.1%]
-[2026-05-05 17:44:17]   baseline rep  29/30   433.2s  | total:   7.9 min  [ 32.2%]
-[2026-05-05 17:44:17]   baseline rep  30/30   424.4s  | total:   7.9 min  [ 33.3%]
-[2026-05-05 17:44:17]   --> scenario baseline complete in 7.9 min
-[2026-05-05 17:44:17] ========== scenario: high_covariate [R=30, 95 cores] ==========
-[2026-05-05 17:51:54]   high_covariate rep   1/30   440.5s  | total:  15.5 min  [ 34.4%]
-[2026-05-05 17:51:54]   high_covariate rep   2/30   401.8s  | total:  15.5 min  [ 35.6%]
-[2026-05-05 17:51:54]   high_covariate rep   3/30   415.3s  | total:  15.5 min  [ 36.7%]
-[2026-05-05 17:51:54]   high_covariate rep   4/30   446.8s  | total:  15.5 min  [ 37.8%]
-[2026-05-05 17:51:54]   high_covariate rep   5/30   434.0s  | total:  15.5 min  [ 38.9%]
-[2026-05-05 17:51:54]   high_covariate rep   6/30   420.9s  | total:  15.5 min  [ 40.0%]
-[2026-05-05 17:51:54]   high_covariate rep   7/30   424.2s  | total:  15.5 min  [ 41.1%]
-[2026-05-05 17:51:54]   high_covariate rep   8/30   397.0s  | total:  15.5 min  [ 42.2%]
-[2026-05-05 17:51:54]   high_covariate rep   9/30   429.5s  | total:  15.5 min  [ 43.3%]
-[2026-05-05 17:51:54]   high_covariate rep  10/30   435.2s  | total:  15.5 min  [ 44.4%]
-[2026-05-05 17:51:54]   high_covariate rep  11/30   426.1s  | total:  15.5 min  [ 45.6%]
-[2026-05-05 17:51:54]   high_covariate rep  12/30   431.6s  | total:  15.5 min  [ 46.7%]
-[2026-05-05 17:51:54]   high_covariate rep  13/30   418.7s  | total:  15.5 min  [ 47.8%]
-[2026-05-05 17:51:54]   high_covariate rep  14/30   434.2s  | total:  15.5 min  [ 48.9%]
-[2026-05-05 17:51:54]   high_covariate rep  15/30   418.8s  | total:  15.5 min  [ 50.0%]
-[2026-05-05 17:51:54]   high_covariate rep  16/30   407.7s  | total:  15.5 min  [ 51.1%]
-[2026-05-05 17:51:54]   high_covariate rep  17/30   429.3s  | total:  15.5 min  [ 52.2%]
-[2026-05-05 17:51:54]   high_covariate rep  18/30   428.8s  | total:  15.5 min  [ 53.3%]
-[2026-05-05 17:51:54]   high_covariate rep  19/30   444.9s  | total:  15.5 min  [ 54.4%]
-[2026-05-05 17:51:54]   high_covariate rep  20/30   411.1s  | total:  15.5 min  [ 55.6%]
-[2026-05-05 17:51:54]   high_covariate rep  21/30   414.2s  | total:  15.5 min  [ 56.7%]
-[2026-05-05 17:51:54]   high_covariate rep  22/30   445.0s  | total:  15.5 min  [ 57.8%]
-[2026-05-05 17:51:54]   high_covariate rep  23/30   411.8s  | total:  15.5 min  [ 58.9%]
-[2026-05-05 17:51:54]   high_covariate rep  24/30   440.2s  | total:  15.5 min  [ 60.0%]
-[2026-05-05 17:51:54]   high_covariate rep  25/30   456.1s  | total:  15.5 min  [ 61.1%]
-[2026-05-05 17:51:54]   high_covariate rep  26/30   413.9s  | total:  15.5 min  [ 62.2%]
-[2026-05-05 17:51:54]   high_covariate rep  27/30   428.3s  | total:  15.5 min  [ 63.3%]
-[2026-05-05 17:51:54]   high_covariate rep  28/30   410.9s  | total:  15.5 min  [ 64.4%]
-[2026-05-05 17:51:54]   high_covariate rep  29/30   425.9s  | total:  15.5 min  [ 65.6%]
-[2026-05-05 17:51:54]   high_covariate rep  30/30   411.7s  | total:  15.5 min  [ 66.7%]
-[2026-05-05 17:51:54]   --> scenario high_covariate complete in 7.6 min
-[2026-05-05 17:51:54] ========== scenario: high_sparsity [R=30, 95 cores] ==========
-[2026-05-05 17:58:53]   high_sparsity rep   1/30   395.7s  | total:  22.5 min  [ 67.8%]
-[2026-05-05 17:58:53]   high_sparsity rep   2/30   391.3s  | total:  22.5 min  [ 68.9%]
-[2026-05-05 17:58:53]   high_sparsity rep   3/30   393.5s  | total:  22.5 min  [ 70.0%]
-[2026-05-05 17:58:53]   high_sparsity rep   4/30   408.4s  | total:  22.5 min  [ 71.1%]
-[2026-05-05 17:58:53]   high_sparsity rep   5/30   407.7s  | total:  22.5 min  [ 72.2%]
-[2026-05-05 17:58:53]   high_sparsity rep   6/30   404.9s  | total:  22.5 min  [ 73.3%]
-[2026-05-05 17:58:53]   high_sparsity rep   7/30   383.0s  | total:  22.5 min  [ 74.4%]
-[2026-05-05 17:58:53]   high_sparsity rep   8/30   406.2s  | total:  22.5 min  [ 75.6%]
-[2026-05-05 17:58:53]   high_sparsity rep   9/30   415.1s  | total:  22.5 min  [ 76.7%]
-[2026-05-05 17:58:53]   high_sparsity rep  10/30   419.7s  | total:  22.5 min  [ 77.8%]
-[2026-05-05 17:58:53]   high_sparsity rep  11/30   400.1s  | total:  22.5 min  [ 78.9%]
-[2026-05-05 17:58:53]   high_sparsity rep  12/30   407.0s  | total:  22.5 min  [ 80.0%]
-[2026-05-05 17:58:53]   high_sparsity rep  13/30   394.9s  | total:  22.5 min  [ 81.1%]
-[2026-05-05 17:58:53]   high_sparsity rep  14/30   413.8s  | total:  22.5 min  [ 82.2%]
-[2026-05-05 17:58:53]   high_sparsity rep  15/30   384.4s  | total:  22.5 min  [ 83.3%]
-[2026-05-05 17:58:53]   high_sparsity rep  16/30   395.8s  | total:  22.5 min  [ 84.4%]
-[2026-05-05 17:58:53]   high_sparsity rep  17/30   396.1s  | total:  22.5 min  [ 85.6%]
-[2026-05-05 17:58:53]   high_sparsity rep  18/30   416.3s  | total:  22.5 min  [ 86.7%]
-[2026-05-05 17:58:53]   high_sparsity rep  19/30   400.7s  | total:  22.5 min  [ 87.8%]
-[2026-05-05 17:58:53]   high_sparsity rep  20/30   416.4s  | total:  22.5 min  [ 88.9%]
-[2026-05-05 17:58:53]   high_sparsity rep  21/30   410.5s  | total:  22.5 min  [ 90.0%]
-[2026-05-05 17:58:53]   high_sparsity rep  22/30   413.0s  | total:  22.5 min  [ 91.1%]
-[2026-05-05 17:58:53]   high_sparsity rep  23/30   395.8s  | total:  22.5 min  [ 92.2%]
-[2026-05-05 17:58:53]   high_sparsity rep  24/30   401.9s  | total:  22.5 min  [ 93.3%]
-[2026-05-05 17:58:53]   high_sparsity rep  25/30   417.1s  | total:  22.5 min  [ 94.4%]
-[2026-05-05 17:58:53]   high_sparsity rep  26/30   398.6s  | total:  22.5 min  [ 95.6%]
-[2026-05-05 17:58:53]   high_sparsity rep  27/30   407.2s  | total:  22.5 min  [ 96.7%]
-[2026-05-05 17:58:53]   high_sparsity rep  28/30   405.2s  | total:  22.5 min  [ 97.8%]
-[2026-05-05 17:58:53]   high_sparsity rep  29/30   400.0s  | total:  22.5 min  [ 98.9%]
-[2026-05-05 17:58:53]   high_sparsity rep  30/30   401.1s  | total:  22.5 min  [100.0%]
-[2026-05-05 17:58:53]   --> scenario high_sparsity complete in 7.0 min
-[2026-05-05 17:58:53] 
+[2026-05-05 18:26:06] === Validation pilot for parametric bootstrap ===
+[2026-05-05 18:26:06]   R = 30 replicates per scenario
+[2026-05-05 18:26:06]   B = 200 (parametric)  B = 200 (legacy noise-aug)
+[2026-05-05 18:26:06]   scenarios = baseline, high_covariate, high_sparsity
+[2026-05-05 18:26:06]   cores = 95 (OS: unix)
+[2026-05-05 18:26:06] ========== scenario: baseline [R=30, 95 cores] ==========
+[2026-05-05 18:34:59]   baseline rep   1/30   469.7s  | total:   8.9 min  [  1.1%]
+[2026-05-05 18:34:59]   baseline rep   2/30   467.8s  | total:   8.9 min  [  2.2%]
+[2026-05-05 18:34:59]   baseline rep   3/30   470.5s  | total:   8.9 min  [  3.3%]
+[2026-05-05 18:34:59]   baseline rep   4/30   509.0s  | total:   8.9 min  [  4.4%]
+[2026-05-05 18:34:59]   baseline rep   5/30   485.4s  | total:   8.9 min  [  5.6%]
+[2026-05-05 18:34:59]   baseline rep   6/30   492.8s  | total:   8.9 min  [  6.7%]
+[2026-05-05 18:34:59]   baseline rep   7/30   474.3s  | total:   8.9 min  [  7.8%]
+[2026-05-05 18:34:59]   baseline rep   8/30   483.7s  | total:   8.9 min  [  8.9%]
+[2026-05-05 18:34:59]   baseline rep   9/30   486.7s  | total:   8.9 min  [ 10.0%]
+[2026-05-05 18:34:59]   baseline rep  10/30   532.1s  | total:   8.9 min  [ 11.1%]
+[2026-05-05 18:34:59]   baseline rep  11/30   505.1s  | total:   8.9 min  [ 12.2%]
+[2026-05-05 18:34:59]   baseline rep  12/30   478.1s  | total:   8.9 min  [ 13.3%]
+[2026-05-05 18:34:59]   baseline rep  13/30   477.1s  | total:   8.9 min  [ 14.4%]
+[2026-05-05 18:34:59]   baseline rep  14/30   485.9s  | total:   8.9 min  [ 15.6%]
+[2026-05-05 18:34:59]   baseline rep  15/30   478.4s  | total:   8.9 min  [ 16.7%]
+[2026-05-05 18:34:59]   baseline rep  16/30   502.7s  | total:   8.9 min  [ 17.8%]
+[2026-05-05 18:34:59]   baseline rep  17/30   482.5s  | total:   8.9 min  [ 18.9%]
+[2026-05-05 18:34:59]   baseline rep  18/30   496.6s  | total:   8.9 min  [ 20.0%]
+[2026-05-05 18:34:59]   baseline rep  19/30   475.9s  | total:   8.9 min  [ 21.1%]
+[2026-05-05 18:34:59]   baseline rep  20/30   471.5s  | total:   8.9 min  [ 22.2%]
+[2026-05-05 18:34:59]   baseline rep  21/30   476.1s  | total:   8.9 min  [ 23.3%]
+[2026-05-05 18:34:59]   baseline rep  22/30   488.3s  | total:   8.9 min  [ 24.4%]
+[2026-05-05 18:34:59]   baseline rep  23/30   470.9s  | total:   8.9 min  [ 25.6%]
+[2026-05-05 18:34:59]   baseline rep  24/30   515.4s  | total:   8.9 min  [ 26.7%]
+[2026-05-05 18:34:59]   baseline rep  25/30   511.1s  | total:   8.9 min  [ 27.8%]
+[2026-05-05 18:34:59]   baseline rep  26/30   476.4s  | total:   8.9 min  [ 28.9%]
+[2026-05-05 18:34:59]   baseline rep  27/30   481.9s  | total:   8.9 min  [ 30.0%]
+[2026-05-05 18:34:59]   baseline rep  28/30   469.1s  | total:   8.9 min  [ 31.1%]
+[2026-05-05 18:34:59]   baseline rep  29/30   491.1s  | total:   8.9 min  [ 32.2%]
+[2026-05-05 18:34:59]   baseline rep  30/30   468.1s  | total:   8.9 min  [ 33.3%]
+[2026-05-05 18:34:59]   --> scenario baseline complete in 8.9 min
+[2026-05-05 18:34:59] ========== scenario: high_covariate [R=30, 95 cores] ==========
+[2026-05-05 18:43:25]   high_covariate rep   1/30   481.2s  | total:  17.3 min  [ 34.4%]
+[2026-05-05 18:43:25]   high_covariate rep   2/30   457.4s  | total:  17.3 min  [ 35.6%]
+[2026-05-05 18:43:25]   high_covariate rep   3/30   467.0s  | total:  17.3 min  [ 36.7%]
+[2026-05-05 18:43:25]   high_covariate rep   4/30   499.2s  | total:  17.3 min  [ 37.8%]
+[2026-05-05 18:43:25]   high_covariate rep   5/30   483.9s  | total:  17.3 min  [ 38.9%]
+[2026-05-05 18:43:25]   high_covariate rep   6/30   481.2s  | total:  17.3 min  [ 40.0%]
+[2026-05-05 18:43:25]   high_covariate rep   7/30   462.7s  | total:  17.3 min  [ 41.1%]
+[2026-05-05 18:43:25]   high_covariate rep   8/30   468.0s  | total:  17.3 min  [ 42.2%]
+[2026-05-05 18:43:25]   high_covariate rep   9/30   492.6s  | total:  17.3 min  [ 43.3%]
+[2026-05-05 18:43:25]   high_covariate rep  10/30   498.8s  | total:  17.3 min  [ 44.4%]
+[2026-05-05 18:43:25]   high_covariate rep  11/30   478.2s  | total:  17.3 min  [ 45.6%]
+[2026-05-05 18:43:25]   high_covariate rep  12/30   493.2s  | total:  17.3 min  [ 46.7%]
+[2026-05-05 18:43:25]   high_covariate rep  13/30   470.2s  | total:  17.3 min  [ 47.8%]
+[2026-05-05 18:43:25]   high_covariate rep  14/30   495.0s  | total:  17.3 min  [ 48.9%]
+[2026-05-05 18:43:25]   high_covariate rep  15/30   462.8s  | total:  17.3 min  [ 50.0%]
+[2026-05-05 18:43:25]   high_covariate rep  16/30   476.3s  | total:  17.3 min  [ 51.1%]
+[2026-05-05 18:43:25]   high_covariate rep  17/30   475.7s  | total:  17.3 min  [ 52.2%]
+[2026-05-05 18:43:25]   high_covariate rep  18/30   495.9s  | total:  17.3 min  [ 53.3%]
+[2026-05-05 18:43:25]   high_covariate rep  19/30   491.7s  | total:  17.3 min  [ 54.4%]
+[2026-05-05 18:43:25]   high_covariate rep  20/30   466.3s  | total:  17.3 min  [ 55.6%]
+[2026-05-05 18:43:25]   high_covariate rep  21/30   478.3s  | total:  17.3 min  [ 56.7%]
+[2026-05-05 18:43:25]   high_covariate rep  22/30   489.2s  | total:  17.3 min  [ 57.8%]
+[2026-05-05 18:43:25]   high_covariate rep  23/30   478.5s  | total:  17.3 min  [ 58.9%]
+[2026-05-05 18:43:25]   high_covariate rep  24/30   498.8s  | total:  17.3 min  [ 60.0%]
+[2026-05-05 18:43:25]   high_covariate rep  25/30   506.8s  | total:  17.3 min  [ 61.1%]
+[2026-05-05 18:43:25]   high_covariate rep  26/30   460.9s  | total:  17.3 min  [ 62.2%]
+[2026-05-05 18:43:25]   high_covariate rep  27/30   486.7s  | total:  17.3 min  [ 63.3%]
+[2026-05-05 18:43:25]   high_covariate rep  28/30   461.5s  | total:  17.3 min  [ 64.4%]
+[2026-05-05 18:43:25]   high_covariate rep  29/30   487.6s  | total:  17.3 min  [ 65.6%]
+[2026-05-05 18:43:25]   high_covariate rep  30/30   466.9s  | total:  17.3 min  [ 66.7%]
+[2026-05-05 18:43:25]   --> scenario high_covariate complete in 8.4 min
+[2026-05-05 18:43:25] ========== scenario: high_sparsity [R=30, 95 cores] ==========
+[2026-05-05 18:51:32]   high_sparsity rep   1/30   459.7s  | total:  25.4 min  [ 67.8%]
+[2026-05-05 18:51:32]   high_sparsity rep   2/30   449.7s  | total:  25.4 min  [ 68.9%]
+[2026-05-05 18:51:32]   high_sparsity rep   3/30   458.3s  | total:  25.4 min  [ 70.0%]
+[2026-05-05 18:51:32]   high_sparsity rep   4/30   473.4s  | total:  25.4 min  [ 71.1%]
+[2026-05-05 18:51:32]   high_sparsity rep   5/30   473.6s  | total:  25.4 min  [ 72.2%]
+[2026-05-05 18:51:32]   high_sparsity rep   6/30   468.7s  | total:  25.4 min  [ 73.3%]
+[2026-05-05 18:51:32]   high_sparsity rep   7/30   460.9s  | total:  25.4 min  [ 74.4%]
+[2026-05-05 18:51:32]   high_sparsity rep   8/30   455.9s  | total:  25.4 min  [ 75.6%]
+[2026-05-05 18:51:32]   high_sparsity rep   9/30   458.6s  | total:  25.4 min  [ 76.7%]
+[2026-05-05 18:51:32]   high_sparsity rep  10/30   469.2s  | total:  25.4 min  [ 77.8%]
+[2026-05-05 18:51:32]   high_sparsity rep  11/30   468.4s  | total:  25.4 min  [ 78.9%]
+[2026-05-05 18:51:32]   high_sparsity rep  12/30   461.1s  | total:  25.4 min  [ 80.0%]
+[2026-05-05 18:51:32]   high_sparsity rep  13/30   477.2s  | total:  25.4 min  [ 81.1%]
+[2026-05-05 18:51:32]   high_sparsity rep  14/30   467.9s  | total:  25.4 min  [ 82.2%]
+[2026-05-05 18:51:32]   high_sparsity rep  15/30   445.5s  | total:  25.4 min  [ 83.3%]
+[2026-05-05 18:51:32]   high_sparsity rep  16/30   455.9s  | total:  25.4 min  [ 84.4%]
+[2026-05-05 18:51:32]   high_sparsity rep  17/30   461.4s  | total:  25.4 min  [ 85.6%]
+[2026-05-05 18:51:32]   high_sparsity rep  18/30   486.1s  | total:  25.4 min  [ 86.7%]
+[2026-05-05 18:51:32]   high_sparsity rep  19/30   469.0s  | total:  25.4 min  [ 87.8%]
+[2026-05-05 18:51:32]   high_sparsity rep  20/30   479.2s  | total:  25.4 min  [ 88.9%]
+[2026-05-05 18:51:32]   high_sparsity rep  21/30   468.6s  | total:  25.4 min  [ 90.0%]
+[2026-05-05 18:51:32]   high_sparsity rep  22/30   474.6s  | total:  25.4 min  [ 91.1%]
+[2026-05-05 18:51:32]   high_sparsity rep  23/30   457.1s  | total:  25.4 min  [ 92.2%]
+[2026-05-05 18:51:32]   high_sparsity rep  24/30   463.7s  | total:  25.4 min  [ 93.3%]
+[2026-05-05 18:51:32]   high_sparsity rep  25/30   483.6s  | total:  25.4 min  [ 94.4%]
+[2026-05-05 18:51:32]   high_sparsity rep  26/30   448.4s  | total:  25.4 min  [ 95.6%]
+[2026-05-05 18:51:32]   high_sparsity rep  27/30   486.2s  | total:  25.4 min  [ 96.7%]
+[2026-05-05 18:51:32]   high_sparsity rep  28/30   457.2s  | total:  25.4 min  [ 97.8%]
+[2026-05-05 18:51:32]   high_sparsity rep  29/30   460.5s  | total:  25.4 min  [ 98.9%]
+[2026-05-05 18:51:32]   high_sparsity rep  30/30   463.8s  | total:  25.4 min  [100.0%]
+[2026-05-05 18:51:32]   --> scenario high_sparsity complete in 8.1 min
+[2026-05-05 18:51:32] 
 === Coverage and width summary ===
-[2026-05-05 17:58:53] Each cell shows the mean over R replicates (B=200).
-[2026-05-05 17:58:53] 
+[2026-05-05 18:51:32] Each cell shows the mean over R replicates (B=200).
+[2026-05-05 18:51:32] 
 --- baseline ---
-[2026-05-05 17:58:53]   plug-in WLS         coverage=0.726  width=1.749  (target 0.95)
-[2026-05-05 17:58:53]   parametric boot     coverage=0.174  width=0.356  (target 0.93-0.97)
-[2026-05-05 17:58:53]   legacy noise-aug    coverage=0.996  width=6.728  (was ~0.99)
-[2026-05-05 17:58:53] 
+[2026-05-05 18:51:32]   plug-in WLS         coverage=0.726  width=1.749  (target 0.95)
+[2026-05-05 18:51:32]   parametric boot     coverage=0.322  width=0.658  (target 0.93-0.97)
+[2026-05-05 18:51:32]   legacy noise-aug    coverage=0.997  width=6.725  (was ~0.99)
+[2026-05-05 18:51:32] 
 --- high_covariate ---
-[2026-05-05 17:58:53]   plug-in WLS         coverage=0.708  width=1.730  (target 0.95)
-[2026-05-05 17:58:53]   parametric boot     coverage=0.193  width=0.427  (target 0.93-0.97)
-[2026-05-05 17:58:53]   legacy noise-aug    coverage=0.997  width=6.616  (was ~0.99)
-[2026-05-05 17:58:53] 
+[2026-05-05 18:51:32]   plug-in WLS         coverage=0.708  width=1.730  (target 0.95)
+[2026-05-05 18:51:32]   parametric boot     coverage=0.321  width=0.682  (target 0.93-0.97)
+[2026-05-05 18:51:32]   legacy noise-aug    coverage=0.994  width=6.603  (was ~0.99)
+[2026-05-05 18:51:32] 
 --- high_sparsity ---
-[2026-05-05 17:58:53]   plug-in WLS         coverage=0.636  width=1.524  (target 0.95)
-[2026-05-05 17:58:53]   parametric boot     coverage=0.126  width=0.278  (target 0.93-0.97)
-[2026-05-05 17:58:53]   legacy noise-aug    coverage=0.984  width=5.284  (was ~0.99)
-[2026-05-05 17:58:53] 
-=== Validation pilot complete in 22.5 min ===
-[2026-05-05 17:58:53] metrics -> /home/linux02/berserk/gscamm/replication_package/simulations/results/validation_metrics.{rds,csv}
-[2026-05-05 17:58:53] table   -> /home/linux02/berserk/gscamm/replication_package/simulations/results/validation_table.csv
-[2026-05-05 17:58:53] log     -> /home/linux02/berserk/gscamm/replication_package/simulations/results/validation_pilot.log
-[2026-05-05 17:58:53] 
+[2026-05-05 18:51:32]   plug-in WLS         coverage=0.636  width=1.524  (target 0.95)
+[2026-05-05 18:51:32]   parametric boot     coverage=0.177  width=0.393  (target 0.93-0.97)
+[2026-05-05 18:51:32]   legacy noise-aug    coverage=0.987  width=5.282  (was ~0.99)
+[2026-05-05 18:51:32] 
+=== Validation pilot complete in 25.4 min ===
+[2026-05-05 18:51:32] metrics -> /home/linux02/berserk/gscamm/replication_package/simulations/results/validation_metrics.{rds,csv}
+[2026-05-05 18:51:32] table   -> /home/linux02/berserk/gscamm/replication_package/simulations/results/validation_table.csv
+[2026-05-05 18:51:32] log     -> /home/linux02/berserk/gscamm/replication_package/simulations/results/validation_pilot.log
+[2026-05-05 18:51:32] 
 Next: review the parametric coverage; if in [0.90, 0.99] proceed to
-[2026-05-05 17:58:53] the production run via Rscript code/02_run_full.R.
+[2026-05-05 18:51:32] the production run via Rscript code/02_run_full.R.
